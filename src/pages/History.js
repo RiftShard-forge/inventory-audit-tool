@@ -129,7 +129,7 @@ export default function History({ config }) {
           </thead>
           <tbody>
             {history.map((entry, index) => {
-              const badgeColor = MODULE_BADGE_COLORS[entry.module] || {
+              const badgeColor = MODULE_BADGE_COLORS[entry.asset] || {
                 color: '#9ca3af', borderColor: '#374151', backgroundColor: '#1f2937'
               };
               return (
@@ -137,7 +137,7 @@ export default function History({ config }) {
                   <td style={STYLES.tdMuted}>{entry.date}</td>
                   <td style={STYLES.td}>
                     <span style={{ ...STYLES.badge, ...badgeColor }}>
-                      {entry.module}
+                      {entry.asset}
                     </span>
                   </td>
                   <td style={STYLES.tdMuted}>

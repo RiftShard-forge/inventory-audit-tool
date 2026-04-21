@@ -37,10 +37,10 @@ const STYLES = {
     borderRadius: '8px', padding: '24px', marginTop: '24px'
   },
   resultsTitle: { fontSize: '16px', fontWeight: '600', color: '#ffffff', marginBottom: '16px' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' },
   statCard: { backgroundColor: '#0f1117', borderRadius: '8px', padding: '16px', textAlign: 'center' },
-  statNumber: { fontSize: '28px', fontWeight: '700', marginBottom: '4px' },
-  statLabel: { fontSize: '12px', color: '#6b7280' },
+  statNumber: { fontSize: '24px', fontWeight: '700', marginBottom: '4px' },
+  statLabel: { fontSize: '11px', color: '#6b7280' },
   error: {
     backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
     borderRadius: '8px', padding: '16px', color: '#fca5a5',
@@ -50,6 +50,10 @@ const STYLES = {
     backgroundColor: '#0f1f17', border: '1px solid #064e3b',
     borderRadius: '8px', padding: '16px', color: '#6ee7b7',
     fontSize: '14px', marginTop: '16px'
+  },
+  modulesList: {
+    fontSize: '12px', color: '#6b7280', marginTop: '12px',
+    padding: '12px', backgroundColor: '#0f1117', borderRadius: '6px'
   }
 };
 
@@ -81,9 +85,7 @@ function Dropzone({ label, file, onFile }) {
         <div style={{ fontSize: '14px', color: '#6b7280' }}>
           Drop your CSV file here or click to browse
         </div>
-        {file && (
-          <div style={STYLES.fileName}>✓ {file.name}</div>
-        )}
+        {file && <div style={STYLES.fileName}>✓ {file.name}</div>}
         <input
           id={`file-${label}`}
           type="file"
@@ -99,14 +101,18 @@ function Dropzone({ label, file, onFile }) {
 export default function RunAudit({ config }) {
   const [meFile, setMeFile] = useState(null);
   const [rosterFile, setRosterFile] = useState(null);
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedAsset, setSelectedAsset] = useState('');
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
 
-  const enabledModules = Object.entries(config.modules)
-    .filter(([, mod]) => mod.enabled)
-    .map(([key, mod]) => ({ key, name: mod.name }));
+  const enabledAssets = Object.entries(config.assetTypes || {})
+    .filter(([, asset]) => asset.enabled)
+    .map(([key, asset]) => ({ key, name: asset.name }));
+
+  const selectedAssetConfig = selectedAsset
+    ? config.assetTypes[selectedAsset]
+    : null;
 
   async function handleRun() {
     setError('');
@@ -116,8 +122,8 @@ export default function RunAudit({ config }) {
       setError('Please upload both the MEData CSV and the Rippling roster CSV.');
       return;
     }
-    if (!selectedModule) {
-      setError('Please select an audit module.');
+    if (!selectedAsset) {
+      setError('Please select an asset type.');
       return;
     }
 
@@ -133,18 +139,23 @@ export default function RunAudit({ config }) {
       const { rows: rosterRows } = parseCsv(rosterText);
 
       const rosterMap = buildRosterMap(rosterRows);
-      const moduleConfig = config.modules[selectedModule];
-      const auditResults = runAudit(meRows, rosterMap, moduleConfig);
+      const auditResults = runAudit(
+        meRows,
+        rosterMap,
+        selectedAssetConfig,
+        config.modulePool
+      );
 
-      setResults({ ...auditResults, moduleName: moduleConfig.name });
+      setResults({ ...auditResults, assetName: selectedAssetConfig.name });
 
       addToHistory({
         date: new Date().toLocaleString(),
-        module: moduleConfig.name,
+        asset: selectedAssetConfig.name,
         meFile: meFile.name,
         rosterFile: rosterFile.name,
         terminated: auditResults.terminated.length,
         unaccounted: auditResults.unaccounted.length,
+        flagged: auditResults.flagged.length,
         blacklisted: auditResults.blacklisted.length,
         clean: auditResults.clean.length
       });
@@ -158,34 +169,46 @@ export default function RunAudit({ config }) {
 
   function handleExport() {
     if (!results) return;
-    exportToExcel(results.moduleName, results);
+    exportToExcel(results.assetName, results);
   }
 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Run Audit</h2>
       <p style={STYLES.subtitle}>
-        Upload your data files, select a module, and run the audit.
+        Upload your data files, select an asset type, and run the audit.
       </p>
 
       <Dropzone label="MEData CSV" file={meFile} onFile={setMeFile} />
       <Dropzone label="Rippling Roster CSV" file={rosterFile} onFile={setRosterFile} />
 
       <div style={STYLES.section}>
-        <span style={STYLES.label}>Audit Module</span>
+        <span style={STYLES.label}>Asset Type</span>
         <select
           style={STYLES.select}
-          value={selectedModule}
-          onChange={e => setSelectedModule(e.target.value)}
+          value={selectedAsset}
+          onChange={e => setSelectedAsset(e.target.value)}
         >
-          <option value="">— Select a module —</option>
-          {enabledModules.map(mod => (
-            <option key={mod.key} value={mod.key}>{mod.name}</option>
+          <option value="">— Select an asset type —</option>
+          {enabledAssets.map(asset => (
+            <option key={asset.key} value={asset.key}>{asset.name}</option>
           ))}
         </select>
       </div>
 
-      <div style={{ marginTop: '8px' }}>
+      {selectedAssetConfig && (
+        <div style={STYLES.modulesList}>
+          <strong style={{ color: '#9ca3af' }}>Active modules for {selectedAssetConfig.name}:</strong>
+          <div style={{ marginTop: '6px' }}>
+            🔧 Processing: {selectedAssetConfig.selectedProcessingModules.join(', ')}
+          </div>
+          <div style={{ marginTop: '4px' }}>
+            🔍 Audit: {selectedAssetConfig.selectedAuditModules.join(', ')}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: '20px' }}>
         <button
           style={{ ...STYLES.button, ...(running ? STYLES.buttonDisabled : {}) }}
           onClick={handleRun}
@@ -206,7 +229,7 @@ export default function RunAudit({ config }) {
       {results && (
         <div style={STYLES.results}>
           <div style={STYLES.resultsTitle}>
-            Audit Complete — {results.moduleName}
+            Audit Complete — {results.assetName}
           </div>
           <div style={STYLES.statsGrid}>
             <div style={STYLES.statCard}>
@@ -220,6 +243,12 @@ export default function RunAudit({ config }) {
                 {results.unaccounted.length}
               </div>
               <div style={STYLES.statLabel}>Unaccounted</div>
+            </div>
+            <div style={STYLES.statCard}>
+              <div style={{ ...STYLES.statNumber, color: '#facc15' }}>
+                {results.flagged.length}
+              </div>
+              <div style={STYLES.statLabel}>Flagged</div>
             </div>
             <div style={STYLES.statCard}>
               <div style={{ ...STYLES.statNumber, color: '#a78bfa' }}>
