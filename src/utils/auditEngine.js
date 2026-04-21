@@ -78,7 +78,7 @@ export function checkLists(serial, whitelist, blacklist) {
  * Runs the audit for a given module against the provided data.
  */
 export function runAudit(meDataRows, rosterMap, moduleConfig) {
-  const { whitelist = [], blacklist = [], knownModels = [], siteMapping = {} } = moduleConfig;
+  const { whitelist = [], blacklist = [], siteMapping = {} } = moduleConfig;
 
   const terminated = [];
   const unaccounted = [];
