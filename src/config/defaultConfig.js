@@ -188,6 +188,22 @@ export const defaultConfig = {
         'outstandingModels',
         'locationMismatch'
       ],
+      availableProcessingModules: [
+        'siteNormalization',
+        'emailNormalization',
+        'osFilter',
+        'stateFilter'
+      ],
+      availableAuditModules: [
+        'emailVsRoster',
+        'lastLoginVsRoster',
+        'emailVsLastLogin',
+        'stateConflict',
+        'duplicateAssignment',
+        'unaccounted',
+        'outstandingModels',
+        'locationMismatch'
+      ],
       whitelist: [],
       blacklist: []
     },
@@ -200,9 +216,15 @@ export const defaultConfig = {
         'siteNormalization',
         'emailNormalization'
       ],
-      selectedAuditModules: [
+      availableProcessingModules: [
+        'siteNormalization',
+        'emailNormalization'
+      ],
+      availableAuditModules: [
         'emailVsRoster',
-        'unaccounted'
+        'unaccounted',
+        'duplicateAssignment',
+        'outstandingModels'
       ],
       whitelist: [],
       blacklist: []
@@ -216,9 +238,15 @@ export const defaultConfig = {
         'siteNormalization',
         'emailNormalization'
       ],
-      selectedAuditModules: [
+      availableProcessingModules: [
+        'siteNormalization',
+        'emailNormalization'
+      ],
+      availableAuditModules: [
         'emailVsRoster',
-        'unaccounted'
+        'unaccounted',
+        'duplicateAssignment',
+        'outstandingModels'
       ],
       whitelist: [],
       blacklist: []
