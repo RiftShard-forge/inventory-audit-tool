@@ -1,40 +1,95 @@
 import React, { useState } from 'react';
-import { loadConfig, saveConfig, loadDetectedHeaders } from './config/configManager';
-import RunAudit from './pages/RunAudit';
+import { loadConfig, saveConfig, loadDetectedHeaders, saveDetectedHeaders } from './config/configManager';
+import DataSources from './pages/DataSources';
 import ModuleManager from './pages/ModuleManager';
 import Settings from './pages/Settings';
+import PreviewRun from './pages/PreviewRun';
 import History from './pages/History';
 import './App.css';
 
 const NAV_ITEMS = [
-  { id: 'run', label: '▶ Run Audit' },
-  { id: 'modules', label: '⚙ Modules' },
-  { id: 'settings', label: '☰ Settings' },
+  { id: 'sources', label: '📂 Data Sources' },
+  { id: 'modules', label: '📦 Module Manager' },
+  { id: 'settings', label: '⚙ Settings' },
+  { id: 'run', label: '▶ Preview & Run' },
   { id: 'history', label: '◷ History' }
 ];
 
 export default function App() {
-  const [activePage, setActivePage] = useState('run');
+  const [activePage, setActivePage] = useState('sources');
   const [config, setConfig] = useState(() => loadConfig());
   const [detectedHeaders, setDetectedHeaders] = useState(() => loadDetectedHeaders());
+
+  // dataSources holds the actual uploaded file data — session only
+  // Structure: { sourceName: { name, headers, rows } }
+  const [dataSources, setDataSources] = useState({});
 
   function handleConfigUpdate(newConfig) {
     saveConfig(newConfig);
     setConfig(newConfig);
   }
 
+  function handleHeadersUpdate(newHeaders) {
+    saveDetectedHeaders(newHeaders);
+    setDetectedHeaders(newHeaders);
+  }
+
+  function handleDataSourcesUpdate(newSources) {
+    setDataSources(newSources);
+    // Save just the names to localStorage for persistence
+    const names = Object.keys(newSources).reduce((acc, key) => {
+      acc[key] = { name: newSources[key].name };
+      return acc;
+    }, {});
+    handleHeadersUpdate(
+      Object.keys(newSources).reduce((acc, key) => {
+        acc[key] = newSources[key].headers;
+        return acc;
+      }, {})
+    );
+  }
+
   function renderPage() {
     switch (activePage) {
-      case 'run':
-        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} onHeadersDetected={setDetectedHeaders} />;
+      case 'sources':
+        return (
+          <DataSources
+            dataSources={dataSources}
+            onDataSourcesUpdate={handleDataSourcesUpdate}
+          />
+        );
       case 'modules':
-        return <ModuleManager config={config} onConfigUpdate={handleConfigUpdate} detectedHeaders={detectedHeaders} />;
+        return (
+          <ModuleManager
+            config={config}
+            onConfigUpdate={handleConfigUpdate}
+            detectedHeaders={detectedHeaders}
+          />
+        );
       case 'settings':
-        return <Settings config={config} onConfigUpdate={handleConfigUpdate} />;
+        return (
+          <Settings
+            config={config}
+            onConfigUpdate={handleConfigUpdate}
+          />
+        );
+      case 'run':
+        return (
+          <PreviewRun
+            config={config}
+            onConfigUpdate={handleConfigUpdate}
+            dataSources={dataSources}
+          />
+        );
       case 'history':
         return <History config={config} />;
       default:
-        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} onHeadersDetected={setDetectedHeaders} />;
+        return (
+          <DataSources
+            dataSources={dataSources}
+            onDataSourcesUpdate={handleDataSourcesUpdate}
+          />
+        );
     }
   }
 
@@ -57,7 +112,12 @@ export default function App() {
           ))}
         </ul>
         <div className="sidebar-footer">
-          <p>v1.0.0</p>
+          <p>v2.0.0</p>
+          {Object.keys(dataSources).length > 0 && (
+            <p style={{ color: '#34d399', fontSize: '10px', marginTop: '4px' }}>
+              ● {Object.keys(dataSources).length} source{Object.keys(dataSources).length !== 1 ? 's' : ''} loaded
+            </p>
+          )}
         </div>
       </nav>
       <main className="main-content">

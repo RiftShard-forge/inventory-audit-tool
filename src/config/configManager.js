@@ -1,13 +1,27 @@
 import { defaultConfig } from './defaultConfig';
 
 const CONFIG_KEY = 'inventoryAuditConfig';
+const HEADERS_KEY = 'detectedHeaders';
+const DATA_SOURCES_KEY = 'activeDataSources';
+
+// =================================================================
+// CONFIG MANAGEMENT
+// =================================================================
 
 export function loadConfig() {
   try {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return parsed;
+      // Merge with defaultConfig to ensure new fields exist
+      return {
+        ...defaultConfig,
+        ...parsed,
+        processingModules: {
+          ...defaultConfig.processingModules,
+          ...(parsed.processingModules || {})
+        }
+      };
     }
     return defaultConfig;
   } catch (e) {
@@ -29,6 +43,8 @@ export function saveConfig(config) {
 export function resetConfig() {
   try {
     localStorage.removeItem(CONFIG_KEY);
+    localStorage.removeItem(HEADERS_KEY);
+    localStorage.removeItem(DATA_SOURCES_KEY);
     return true;
   } catch (e) {
     console.error('Failed to reset config:', e);
@@ -48,9 +64,13 @@ export function addToHistory(entry) {
   }
 }
 
+// =================================================================
+// DETECTED HEADERS MANAGEMENT
+// =================================================================
+
 export function saveDetectedHeaders(headers) {
   try {
-    localStorage.setItem('detectedHeaders', JSON.stringify(headers));
+    localStorage.setItem(HEADERS_KEY, JSON.stringify(headers));
     return true;
   } catch (e) {
     console.error('Failed to save detected headers:', e);
@@ -60,10 +80,35 @@ export function saveDetectedHeaders(headers) {
 
 export function loadDetectedHeaders() {
   try {
-    const stored = localStorage.getItem('detectedHeaders');
-    return stored ? JSON.parse(stored) : { meData: [], rosterData: [] };
+    const stored = localStorage.getItem(HEADERS_KEY);
+    return stored ? JSON.parse(stored) : {};
   } catch (e) {
     console.error('Failed to load detected headers:', e);
-    return { meData: [], rosterData: [] };
+    return {};
+  }
+}
+
+// =================================================================
+// DATA SOURCES MANAGEMENT
+// Session-only in the app state, but we track source names here
+// =================================================================
+
+export function saveDataSourceNames(sourceNames) {
+  try {
+    localStorage.setItem(DATA_SOURCES_KEY, JSON.stringify(sourceNames));
+    return true;
+  } catch (e) {
+    console.error('Failed to save data source names:', e);
+    return false;
+  }
+}
+
+export function loadDataSourceNames() {
+  try {
+    const stored = localStorage.getItem(DATA_SOURCES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Failed to load data source names:', e);
+    return [];
   }
 }
