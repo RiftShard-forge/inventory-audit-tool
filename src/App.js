@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { loadConfig, saveConfig } from './config/configManager';
+import { loadConfig, saveConfig, loadDetectedHeaders } from './config/configManager';
 import RunAudit from './pages/RunAudit';
 import ModuleManager from './pages/ModuleManager';
 import Settings from './pages/Settings';
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
 export default function App() {
   const [activePage, setActivePage] = useState('run');
   const [config, setConfig] = useState(() => loadConfig());
+  const [detectedHeaders, setDetectedHeaders] = useState(() => loadDetectedHeaders());
 
   function handleConfigUpdate(newConfig) {
     saveConfig(newConfig);
@@ -25,15 +26,15 @@ export default function App() {
   function renderPage() {
     switch (activePage) {
       case 'run':
-        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} />;
+        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} onHeadersDetected={setDetectedHeaders} />;
       case 'modules':
-        return <ModuleManager config={config} onConfigUpdate={handleConfigUpdate} />;
+        return <ModuleManager config={config} onConfigUpdate={handleConfigUpdate} detectedHeaders={detectedHeaders} />;
       case 'settings':
         return <Settings config={config} onConfigUpdate={handleConfigUpdate} />;
       case 'history':
         return <History config={config} />;
       default:
-        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} />;
+        return <RunAudit config={config} onConfigUpdate={handleConfigUpdate} onHeadersDetected={setDetectedHeaders} />;
     }
   }
 

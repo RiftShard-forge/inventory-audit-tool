@@ -47,3 +47,23 @@ export function addToHistory(entry) {
     return false;
   }
 }
+
+export function saveDetectedHeaders(headers) {
+  try {
+    localStorage.setItem('detectedHeaders', JSON.stringify(headers));
+    return true;
+  } catch (e) {
+    console.error('Failed to save detected headers:', e);
+    return false;
+  }
+}
+
+export function loadDetectedHeaders() {
+  try {
+    const stored = localStorage.getItem('detectedHeaders');
+    return stored ? JSON.parse(stored) : { meData: [], rosterData: [] };
+  } catch (e) {
+    console.error('Failed to load detected headers:', e);
+    return { meData: [], rosterData: [] };
+  }
+}

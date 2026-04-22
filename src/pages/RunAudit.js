@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { parseCsv, buildRosterMap, runAudit } from '../utils/auditEngine';
 import { exportToExcel } from '../utils/exportExcel';
-import { addToHistory } from '../config/configManager';
+import { addToHistory, saveDetectedHeaders } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '800px' },
@@ -98,7 +98,7 @@ function Dropzone({ label, file, onFile }) {
   );
 }
 
-export default function RunAudit({ config }) {
+export default function RunAudit({ config, onConfigUpdate, onHeadersDetected }) {
   const [meFile, setMeFile] = useState(null);
   const [rosterFile, setRosterFile] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState('');
@@ -107,7 +107,6 @@ export default function RunAudit({ config }) {
   const [running, setRunning] = useState(false);
 
   const enabledAssets = Object.entries(config.assetTypes || {})
-    .filter(([, asset]) => asset.enabled)
     .map(([key, asset]) => ({ key, name: asset.name }));
 
   const selectedAssetConfig = selectedAsset
@@ -115,6 +114,12 @@ export default function RunAudit({ config }) {
     : null;
 
   async function handleRun() {
+     // Auto-disable all other asset types when running
+    const updatedAssetTypes = {};
+    Object.entries(config.assetTypes || {}).forEach(([key, asset]) => {
+      updatedAssetTypes[key] = { ...asset, enabled: key === selectedAsset };
+    });
+    onConfigUpdate({ ...config, assetTypes: updatedAssetTypes });
     setError('');
     setResults(null);
 
@@ -135,8 +140,13 @@ export default function RunAudit({ config }) {
         rosterFile.text()
       ]);
 
-      const { rows: meRows } = parseCsv(meText);
-      const { rows: rosterRows } = parseCsv(rosterText);
+      const { header: meHeaders, rows: meRows } = parseCsv(meText);
+      const { header: rosterHeaders, rows: rosterRows } = parseCsv(rosterText);
+
+      // Store detected headers for use in Module Manager column mapping
+      const newHeaders = { meData: meHeaders, rosterData: rosterHeaders };
+      saveDetectedHeaders(newHeaders);
+      if (onHeadersDetected) onHeadersDetected(newHeaders);
 
       const rosterMap = buildRosterMap(rosterRows);
       const auditResults = runAudit(
