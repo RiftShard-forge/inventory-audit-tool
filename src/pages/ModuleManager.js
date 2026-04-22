@@ -82,29 +82,93 @@ const STYLES = {
 };
 
 // =============================================
+// TAG LIST INPUT (for whitelist/blacklist)
+// =============================================
+function TagListInput({ label, description, items, onChange }) {
+  const [inputVal, setInputVal] = useState('');
+
+  function handleAdd() {
+    const trimmed = inputVal.trim();
+    if (trimmed && !items.includes(trimmed)) {
+      onChange([...items, trimmed]);
+      setInputVal('');
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleAdd();
+  }
+
+  return (
+    <div style={{ marginBottom: '12px' }}>
+      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: '10px', color: '#4b5563', marginBottom: '6px' }}>
+        {description}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+        {(items || []).length === 0 && (
+          <span style={{ fontSize: '11px', color: '#4b5563' }}>None added.</span>
+        )}
+        {(items || []).map(item => (
+          <div key={item} style={{
+            display: 'flex', alignItems: 'center', gap: '3px',
+            backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+            borderRadius: '4px', padding: '2px 6px', fontSize: '11px', color: '#e0e0e0'
+          }}>
+            <span>{item}</span>
+            <button
+              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: '0' }}
+              onClick={() => onChange(items.filter(i => i !== item))}
+            >×</button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input
+          style={{
+            flex: 1, padding: '6px 10px', backgroundColor: '#0f1117',
+            border: '1px solid #2a2d3e', borderRadius: '6px',
+            color: '#e0e0e0', fontSize: '11px'
+          }}
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Add serial number..."
+        />
+        <button
+          style={{
+            padding: '6px 10px', backgroundColor: '#6366f1', color: '#ffffff',
+            border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer'
+          }}
+          onClick={handleAdd}
+        >+ Add</button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================
 // ASSET TYPES TAB
 // =============================================
 function AssetTypesTab({ config, onConfigUpdate }) {
   const [savedMsg, setSavedMsg] = useState('');
   const assetTypes = config.assetTypes || {};
   const modulePool = config.modulePool || {};
-  const allProcessingIds = (asset) => 
+  const allProcessingIds = (asset) =>
     asset.availableProcessingModules || Object.keys(modulePool.processing || {});
-  const allAuditIds = (asset) => 
+  const allAuditIds = (asset) =>
     asset.availableAuditModules || Object.keys(modulePool.audit || {});
 
   function handleToggleAsset(assetId) {
-    const updated = {
+    onConfigUpdate({
       ...config,
       assetTypes: {
         ...assetTypes,
-        [assetId]: {
-          ...assetTypes[assetId],
-          enabled: !assetTypes[assetId].enabled
-        }
+        [assetId]: { ...assetTypes[assetId], enabled: !assetTypes[assetId].enabled }
       }
-    };
-    onConfigUpdate(updated);
+    });
   }
 
   function handleToggleModule(assetId, moduleId, type) {
@@ -114,12 +178,19 @@ function AssetTypesTab({ config, onConfigUpdate }) {
     const updated = current.includes(moduleId)
       ? current.filter(m => m !== moduleId)
       : [...current, moduleId];
+    onConfigUpdate({
+      ...config,
+      assetTypes: { ...assetTypes, [assetId]: { ...asset, [field]: updated } }
+    });
+    setSavedMsg('');
+  }
 
+  function handleListChange(assetId, listName, newItems) {
     onConfigUpdate({
       ...config,
       assetTypes: {
         ...assetTypes,
-        [assetId]: { ...asset, [field]: updated }
+        [assetId]: { ...assetTypes[assetId], [listName]: newItems }
       }
     });
     setSavedMsg('');
@@ -186,6 +257,22 @@ function AssetTypesTab({ config, onConfigUpdate }) {
                 );
               })}
             </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '16px 0' }} />
+
+            <TagListInput
+              label="✓ Whitelist (Serial Numbers)"
+              description="Always marked clean — skip all audit checks"
+              items={asset.whitelist || []}
+              onChange={items => handleListChange(assetId, 'whitelist', items)}
+            />
+
+            <TagListInput
+              label="✕ Blacklist (Serial Numbers)"
+              description="Suppressed from audit — flagged separately"
+              items={asset.blacklist || []}
+              onChange={items => handleListChange(assetId, 'blacklist', items)}
+            />
           </div>
         ))}
       </div>
@@ -409,7 +496,6 @@ function MappingModulePanel({
       </div>
       <p style={STYLES.configDesc}>{mod.description}</p>
 
-      {/* Site/Name Mappings */}
       {mod.config.mappings && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
@@ -439,7 +525,6 @@ function MappingModulePanel({
         </div>
       )}
 
-      {/* Domain to strip */}
       {mod.config.domainToStrip !== undefined && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
@@ -453,7 +538,6 @@ function MappingModulePanel({
         </div>
       )}
 
-      {/* OS Categories */}
       {mod.config.categories && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
@@ -475,7 +559,6 @@ function MappingModulePanel({
         </div>
       )}
 
-      {/* Active/Flagged States */}
       {mod.config.activeStates && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
@@ -527,7 +610,6 @@ function AuditModulePanel({ moduleId, mod, onToggle, onColumnMappingChange, onLi
       </div>
       <p style={STYLES.configDesc}>{mod.description}</p>
 
-      {/* Column Mappings */}
       {mod.config.columnMapping && Object.keys(mod.config.columnMapping).length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
@@ -549,7 +631,6 @@ function AuditModulePanel({ moduleId, mod, onToggle, onColumnMappingChange, onLi
         </div>
       )}
 
-      {/* Known Models list for outstandingModels module */}
       {mod.config.knownModels !== undefined && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
