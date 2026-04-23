@@ -321,6 +321,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
 function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [collapsedSteps, setCollapsedSteps] = useState({});
   const steps = config.processingSteps || [];
 
   function handleAddStep(type) {
@@ -392,13 +393,74 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
       {steps
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map(step => (
-          <ProcessingStepCard
-            key={step.id}
-            step={step}
-            onUpdate={updated => handleUpdateStep(step.id, updated)}
-            onRemove={() => handleRemoveStep(step.id)}
-            detectedHeaders={detectedHeaders}
-          />
+          <div key={step.id}>
+            {collapsedSteps[step.id] ? (
+              <div style={{
+                backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+                borderRadius: '8px', padding: '12px 16px', marginBottom: '10px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>
+                    {step.name || 'Unnamed Step'}
+                  </span>
+                  <span style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                    backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
+                  }}>
+                    {STEP_TYPES.find(t => t.value === step.type)?.label || step.type}
+                  </span>
+                  <span style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                    backgroundColor: step.enabled ? '#0f1f17' : '#1f2937',
+                    border: `1px solid ${step.enabled ? '#064e3b' : '#374151'}`,
+                    color: step.enabled ? '#34d399' : '#9ca3af'
+                  }}>
+                    {step.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#4b5563' }}>
+                    Order: {step.order || 1} · {step.columnName || 'No header set'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    style={{
+                      background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                      cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                      padding: '3px 8px'
+                    }}
+                    onClick={() => setCollapsedSteps(prev => ({ ...prev, [step.id]: false }))}
+                  >
+                    ▼ Expand
+                  </button>
+                  <button
+                    style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }}
+                    onClick={() => handleRemoveStep(step.id)}
+                  >×</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <button
+                  style={{
+                    position: 'absolute', top: '12px', right: '12px', zIndex: 10,
+                    background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                    cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                    padding: '3px 8px'
+                  }}
+                  onClick={() => setCollapsedSteps(prev => ({ ...prev, [step.id]: true }))}
+                >
+                  ▲ Collapse
+                </button>
+                <ProcessingStepCard
+                  step={step}
+                  onUpdate={updated => handleUpdateStep(step.id, updated)}
+                  onRemove={() => handleRemoveStep(step.id)}
+                  detectedHeaders={detectedHeaders}
+                />
+              </div>
+            )}
+          </div>
         ))}
 
       {showTypeSelector ? (

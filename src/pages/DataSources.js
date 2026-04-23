@@ -75,6 +75,7 @@ const STYLES = {
 
 function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSteps }) {
   const [active, setActive] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const isLoaded = !!source.file;
 
   function handleFile(file) {
@@ -99,83 +100,104 @@ function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSt
         <span style={STYLES.cardTitle}>{source.name}</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {isLoaded && <span style={STYLES.badge}>Loaded</span>}
+          {isLoaded && (
+            <button
+              style={{
+                background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                padding: '3px 8px'
+              }}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? '▼ Expand' : '▲ Collapse'}
+            </button>
+          )}
           <button style={STYLES.removeBtn} onClick={() => onRemove(source.id)}>×</button>
         </div>
       </div>
 
-      <div
-        style={{
-          ...STYLES.dropzone,
-          ...(active ? STYLES.dropzoneActive : {}),
-          ...(isLoaded ? STYLES.dropzoneLoaded : {})
-        }}
-        onDragOver={e => { e.preventDefault(); setActive(true); }}
-        onDragLeave={() => setActive(false)}
-        onDrop={handleDrop}
-        onClick={() => document.getElementById(`file-${source.id}`).click()}
-      >
-        <div style={{ fontSize: '28px', marginBottom: '6px' }}>
-          {isLoaded ? '✓' : '📂'}
-        </div>
-        <div style={{ fontSize: '12px', color: isLoaded ? '#34d399' : '#6b7280' }}>
-          {isLoaded ? source.fileName : 'Drop CSV here or click to browse'}
-        </div>
-        <input
-          id={`file-${source.id}`}
-          type="file"
-          accept=".csv"
-          style={{ display: 'none' }}
-          onChange={e => handleFile(e.target.files[0])}
-        />
-      </div>
-
-      {isLoaded && (
+      {!collapsed && (
         <>
-          <div style={STYLES.rowCount}>
-            {source.rows.length} rows · {source.headers.length} headers
-          </div>
-          <div style={STYLES.headerPills}>
-            {source.headers.map(h => (
-              <span key={h} style={STYLES.headerPill}>{h}</span>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Processing Steps selector */}
-      {processingSteps && processingSteps.length > 0 && (
-        <>
-          <div style={STYLES.divider} />
-          <div style={STYLES.stepsLabel}>🔧 Processing Steps</div>
-          <div>
-            {processingSteps.map(step => {
-              const isSelected = (source.selectedProcessingSteps || []).includes(step.id);
-              return (
-                <span
-                  key={step.id}
-                  style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipActive : {}) }}
-                  onClick={() => onStepToggle(source.id, step.id)}
-                >
-                  {step.name || step.id}
-                </span>
-              );
-            })}
-          </div>
-          {(source.selectedProcessingSteps || []).length > 0 && (
-            <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '6px' }}>
-              {(source.selectedProcessingSteps || []).length} step(s) will run on this source before audit
+          <div
+            style={{
+              ...STYLES.dropzone,
+              ...(active ? STYLES.dropzoneActive : {}),
+              ...(isLoaded ? STYLES.dropzoneLoaded : {})
+            }}
+            onDragOver={e => { e.preventDefault(); setActive(true); }}
+            onDragLeave={() => setActive(false)}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById(`file-${source.id}`).click()}
+          >
+            <div style={{ fontSize: '28px', marginBottom: '6px' }}>
+              {isLoaded ? '✓' : '📂'}
             </div>
+            <div style={{ fontSize: '12px', color: isLoaded ? '#34d399' : '#6b7280' }}>
+              {isLoaded ? source.fileName : 'Drop CSV here or click to browse'}
+            </div>
+            <input
+              id={`file-${source.id}`}
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={e => handleFile(e.target.files[0])}
+            />
+          </div>
+
+          {isLoaded && (
+            <>
+              <div style={STYLES.rowCount}>
+                {source.rows.length} rows · {source.headers.length} headers
+              </div>
+              <div style={STYLES.headerPills}>
+                {source.headers.map(h => (
+                  <span key={h} style={STYLES.headerPill}>{h}</span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {processingSteps && processingSteps.length > 0 && (
+            <>
+              <div style={STYLES.divider} />
+              <div style={STYLES.stepsLabel}>🔧 Processing Steps</div>
+              <div>
+                {processingSteps.map(step => {
+                  const isSelected = (source.selectedProcessingSteps || []).includes(step.id);
+                  return (
+                    <span
+                      key={step.id}
+                      style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipActive : {}) }}
+                      onClick={() => onStepToggle(source.id, step.id)}
+                    >
+                      {step.name || step.id}
+                    </span>
+                  );
+                })}
+              </div>
+              {(source.selectedProcessingSteps || []).length > 0 && (
+                <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '6px' }}>
+                  {(source.selectedProcessingSteps || []).length} step(s) will run on this source before audit
+                </div>
+              )}
+            </>
+          )}
+
+          {processingSteps && processingSteps.length === 0 && isLoaded && (
+            <>
+              <div style={STYLES.divider} />
+              <div style={{ fontSize: '11px', color: '#4b5563' }}>
+                No processing steps defined yet. Add them in Settings → Processing.
+              </div>
+            </>
           )}
         </>
       )}
 
-      {processingSteps && processingSteps.length === 0 && isLoaded && (
-        <>
-          <div style={STYLES.divider} />
-          <div style={{ fontSize: '11px', color: '#4b5563' }}>
-            No processing steps defined yet. Add them in Settings → Processing.
-          </div>
-        </>
+      {collapsed && isLoaded && (
+        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+          {source.rows.length} rows · {source.headers.length} headers · {(source.selectedProcessingSteps || []).length} processing step(s)
+        </div>
       )}
     </div>
   );
