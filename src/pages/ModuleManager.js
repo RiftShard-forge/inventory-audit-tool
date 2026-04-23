@@ -828,6 +828,7 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 // AUDIT RULES TAB
 // =============================================
 function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
+  const [collapsedRules, setCollapsedRules] = useState({});
   const [savedMsg, setSavedMsg] = useState('');
   const rules = config.auditRules || [];
   const categories = config.auditCategories || [];
@@ -882,14 +883,79 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
       {rules
         .sort((a, b) => (a.severity || 5) - (b.severity || 5))
         .map(rule => (
-          <RuleBuilder
-            key={rule.id}
-            rule={rule}
-            onUpdate={updated => handleUpdateRule(rule.id, updated)}
-            onRemove={() => handleRemoveRule(rule.id)}
-            detectedHeaders={detectedHeaders}
-            categories={categories}
-          />
+          <div key={rule.id}>
+            {/* Collapsed view */}
+            {collapsedRules[rule.id] ? (
+              <div style={{
+                backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+                borderRadius: '8px', padding: '12px 16px', marginBottom: '10px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>
+                    {rule.name || 'New Rule'}
+                  </span>
+                  {rule.severity && (
+                    <span style={{
+                      fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                      backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
+                      color: rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280'
+                    }}>
+                      Priority {rule.severity}
+                    </span>
+                  )}
+                  {rule.category && (
+                    <span style={{
+                      fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                      backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
+                    }}>
+                      {rule.category}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '11px', color: '#4b5563' }}>
+                    {(rule.conditions || []).length} condition(s)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    style={{
+                      background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                      cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                      padding: '3px 8px'
+                    }}
+                    onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: false }))}
+                  >
+                    ▼ Expand
+                  </button>
+                  <button
+                    style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }}
+                    onClick={() => handleRemoveRule(rule.id)}
+                  >×</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <button
+                  style={{
+                    position: 'absolute', top: '12px', right: '40px', zIndex: 10,
+                    background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                    cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                    padding: '3px 8px'
+                  }}
+                  onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: true }))}
+                >
+                  ▲ Collapse
+                </button>
+                <RuleBuilder
+                  rule={rule}
+                  onUpdate={updated => handleUpdateRule(rule.id, updated)}
+                  onRemove={() => handleRemoveRule(rule.id)}
+                  detectedHeaders={detectedHeaders}
+                  categories={categories}
+                />
+              </div>
+            )}
+          </div>
         ))}
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
