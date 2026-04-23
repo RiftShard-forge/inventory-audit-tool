@@ -111,7 +111,12 @@ function evaluateCondition(condition, row, allSources) {
   const primaryValue = row[sourceColumn] || '';
 
   if (compareType === 'value' || !compareType) {
-    return applyOperator(primaryValue, operator, compareValue);
+    // Check if compareValue is a column header in the same source row
+    // If the row has a key matching compareValue, use that column's value
+    const resolvedCompareValue = (compareValue && row.hasOwnProperty(compareValue))
+      ? row[compareValue]
+      : compareValue;
+    return applyOperator(primaryValue, operator, resolvedCompareValue);
   }
 
   if (compareType === 'lookup') {

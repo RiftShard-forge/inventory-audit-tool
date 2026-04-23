@@ -486,15 +486,15 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
               </div>
               <div style={STYLES.row}>
                 <span style={STYLES.label}>Value</span>
-                <input
-                  style={STYLES.input}
+                <DiscoverableInput
                   value={condition.compareValue || ''}
-                  onChange={e => {
+                  onChange={val => {
                     const updated = [...(rule.conditions || [])];
-                    updated[idx] = { ...condition, compareValue: e.target.value };
+                    updated[idx] = { ...condition, compareValue: val };
                     update({ conditions: updated });
                   }}
-                  placeholder="e.g. Assigned — the value to compare against"
+                  headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
+                  placeholder="Type a value or select a header from the same source..."
                 />
               </div>
             </>
