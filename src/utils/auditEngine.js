@@ -209,6 +209,11 @@ function evaluateRule(rule, row, allSources) {
     }
 
     const lookupValue = matchedRow[lookupValueColumn] || '';
+    // If compareValue is set, compare lookup result against it
+    // Otherwise compare primary value against lookup value
+    if (compareValue) {
+      return applyOperator(lookupValue, operator, compareValue);
+    }
     return applyOperator(primaryValue, operator, lookupValue);
   }
 

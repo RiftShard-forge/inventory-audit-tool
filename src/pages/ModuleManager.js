@@ -330,6 +330,17 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, al
       </div>
 
       {rule.compareType === 'lookup' && (
+        <div style={STYLES.row}>
+          <span style={STYLES.label}>Expected value</span>
+          <input
+            style={STYLES.input}
+            value={rule.compareValue || ''}
+            onChange={e => update({ compareValue: e.target.value })}
+            placeholder="Value the lookup result should equal (e.g. Terminated)..."
+          />
+        </div>
+      )}
+      {rule.compareType === 'lookup' && (
         <>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Match key col</span>
