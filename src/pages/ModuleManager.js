@@ -49,10 +49,6 @@ const STYLES = {
     padding: '6px 12px', backgroundColor: '#374151', color: '#e0e0e0',
     border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
   },
-  dangerBtnSmall: {
-    padding: '6px 12px', backgroundColor: '#1f1315', color: '#fca5a5',
-    border: '1px solid #7f1d1d', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
-  },
   editInput: {
     padding: '7px 10px', backgroundColor: '#0f1117', border: '1px solid #6366f1',
     borderRadius: '6px', color: '#e0e0e0', fontSize: '13px',
@@ -101,6 +97,14 @@ const STYLES = {
     padding: '8px 10px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
     borderRadius: '6px', color: '#6366f1', fontSize: '12px',
     cursor: 'pointer', width: '130px', flexShrink: 0
+  },
+  lookupBox: {
+    backgroundColor: '#0a0d14', border: '1px solid #2a2d3e',
+    borderRadius: '8px', padding: '16px', marginTop: '4px'
+  },
+  lookupLabel: {
+    fontSize: '11px', color: '#6b7280', marginBottom: '12px',
+    fontWeight: '500', letterSpacing: '0.05em'
   }
 };
 
@@ -192,15 +196,125 @@ function TagListInput({ label, description, items, onChange }) {
 }
 
 // =============================================
+// LIVE SENTENCE BUILDER
+// =============================================
+function buildRuleSentence(rule) {
+  // Multi-condition rule
+  if (rule.conditions && rule.conditions.length > 0) {
+    const parts = rule.conditions.map((c, i) => {
+      const col = c.sourceColumn || '...';
+      const src = c.sourceId || '...';
+      const op = c.operator || 'equals';
+
+      if (!c.compareType || c.compareType === 'value') {
+        const val = c.compareValue || '...';
+        return (
+          <span key={i}>
+            {i > 0 && (
+              <strong style={{ color: '#facc15' }}>
+                {' '}{c.connector || 'AND'}{' '}
+              </strong>
+            )}
+            <strong style={{ color: '#38bdf8' }}>{col}</strong>
+            {' '}from{' '}
+            <strong style={{ color: '#38bdf8' }}>{src}</strong>
+            {' '}
+            <strong style={{ color: '#6366f1' }}>{op}</strong>
+            {' '}
+            <strong style={{ color: '#34d399' }}>{val}</strong>
+          </span>
+        );
+      }
+
+      if (c.compareType === 'lookup') {
+        const searchWith = c.matchKeyColumn || '...';
+        const lookupSrc = c.lookupSourceId || '...';
+        const lookupKey = c.lookupKeyColumn || '...';
+        const lookupVal = c.lookupValueColumn || '...';
+        const val = c.compareValue || '...';
+        return (
+          <span key={i}>
+            {i > 0 && (
+              <strong style={{ color: '#facc15' }}>
+                {' '}{c.connector || 'AND'}{' '}
+              </strong>
+            )}
+            <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>
+            {' '}from{' '}
+            <strong style={{ color: '#38bdf8' }}>{src}</strong>
+            {' '}— in{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>
+            {' '}where{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>
+            {' '}matches — has{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>
+            {' '}
+            <strong style={{ color: '#6366f1' }}>{op}</strong>
+            {' '}
+            <strong style={{ color: '#34d399' }}>{val}</strong>
+          </span>
+        );
+      }
+      return null;
+    });
+
+    return <span>Flag any row where {parts}</span>;
+  }
+
+  // Single condition (legacy)
+  const col = rule.sourceColumn || '...';
+  const src = rule.sourceId || '...';
+  const op = rule.operator || 'equals';
+
+  if (!rule.compareType || rule.compareType === 'value') {
+    const val = rule.compareValue || '...';
+    return (
+      <span>
+        Flag any row where{' '}
+        <strong style={{ color: '#38bdf8' }}>{col}</strong>
+        {' '}from{' '}
+        <strong style={{ color: '#38bdf8' }}>{src}</strong>
+        {' '}
+        <strong style={{ color: '#6366f1' }}>{op}</strong>
+        {' '}
+        <strong style={{ color: '#34d399' }}>{val}</strong>
+      </span>
+    );
+  }
+
+  if (rule.compareType === 'lookup') {
+    const searchWith = rule.matchKeyColumn || '...';
+    const lookupSrc = rule.lookupSourceId || '...';
+    const lookupKey = rule.lookupKeyColumn || '...';
+    const lookupVal = rule.lookupValueColumn || '...';
+    const val = rule.compareValue || '...';
+    return (
+      <span>
+        Flag any row where{' '}
+        <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>
+        {' '}from{' '}
+        <strong style={{ color: '#38bdf8' }}>{src}</strong>
+        {' '}— searching{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>
+        {' '}where{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>
+        {' '}matches — has{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>
+        {' '}
+        <strong style={{ color: '#6366f1' }}>{op}</strong>
+        {' '}
+        <strong style={{ color: '#34d399' }}>{val}</strong>
+      </span>
+    );
+  }
+
+  return <span style={{ color: '#4b5563' }}>Fill in the fields below to build your rule...</span>;
+}
+
+// =============================================
 // RULE BUILDER
 // =============================================
-function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, allSources }) {
-  const allHeaders = detectedHeaders
-    ? Object.entries(detectedHeaders).flatMap(([sourceId, headers]) =>
-        (headers || []).map(h => ({ label: `${sourceId}: ${h}`, value: h, sourceId }))
-      )
-    : [];
-
+function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) {
   const sourceOptions = detectedHeaders ? Object.keys(detectedHeaders) : [];
 
   function update(changes) {
@@ -211,13 +325,13 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, al
 
   return (
     <div style={STYLES.ruleCard}>
+      {/* Rule header */}
       <div style={STYLES.ruleHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={STYLES.ruleTitle}>{rule.name || 'New Rule'}</span>
           <span style={{
             fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
-            backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
-            color: severityColor
+            backgroundColor: '#1f1315', border: '1px solid #7f1d1d', color: severityColor
           }}>
             Priority {rule.severity || 5}
           </span>
@@ -234,6 +348,15 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, al
           style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }}
           onClick={onRemove}
         >×</button>
+      </div>
+
+      {/* Live sentence */}
+      <div style={{
+        backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+        borderRadius: '6px', padding: '10px 14px', marginBottom: '14px',
+        fontSize: '12px', color: '#9ca3af', lineHeight: '1.6'
+      }}>
+        {buildRuleSentence(rule)}
       </div>
 
       {/* Rule name */}
@@ -257,7 +380,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, al
         </select>
       </div>
 
-      {/* Severity */}
+      {/* Priority */}
       <div style={STYLES.row}>
         <span style={STYLES.label}>Priority (1-10)</span>
         <input
@@ -266,111 +389,214 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, al
           value={rule.severity || 5}
           onChange={e => update({ severity: parseInt(e.target.value) || 5 })}
         />
-        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority</span>
+        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first</span>
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '12px 0' }} />
 
-      {/* Source column */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Source column</span>
-        <select style={{ ...STYLES.select, width: '120px', flex: 'none' }}
-          value={rule.sourceId || ''}
-          onChange={e => update({ sourceId: e.target.value })}
-        >
-          <option value="">Source...</option>
-          {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <DiscoverableInput
-          value={rule.sourceColumn || ''}
-          onChange={val => update({ sourceColumn: val })}
-          headers={rule.sourceId && detectedHeaders ? detectedHeaders[rule.sourceId] : []}
-          placeholder="Header name..."
-        />
-      </div>
+      {/* Conditions */}
+      {(rule.conditions || []).map((condition, idx) => (
+        <div key={idx} style={{
+          backgroundColor: '#0a0d14', border: '1px solid #2a2d3e',
+          borderRadius: '8px', padding: '16px', marginTop: '8px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            {idx === 0 ? (
+              <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '500' }}>WHEN</span>
+            ) : (
+              <select
+                style={{
+                  backgroundColor: '#1a1d27', border: '1px solid #facc15',
+                  borderRadius: '4px', color: '#facc15', fontSize: '11px',
+                  fontWeight: '500', cursor: 'pointer', padding: '2px 6px'
+                }}
+                value={condition.connector || 'AND'}
+                onChange={e => {
+                  const updated = [...(rule.conditions || [])];
+                  updated[idx] = { ...condition, connector: e.target.value };
+                  update({ conditions: updated });
+                }}
+              >
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+            )}
+            <button
+              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }}
+              onClick={() => update({ conditions: (rule.conditions || []).filter((_, i) => i !== idx) })}
+            >×</button>
+          </div>
 
-      {/* Operator */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Operator</span>
-        <select style={STYLES.operatorSelect} value={rule.operator || 'equals'} onChange={e => update({ operator: e.target.value })}>
-          {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
-        </select>
-      </div>
-
-      {/* Compare type */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Compare to</span>
-        <select style={{ ...STYLES.select, width: '140px', flex: 'none' }}
-          value={rule.compareType || 'value'}
-          onChange={e => update({ compareType: e.target.value })}
-        >
-          {COMPARE_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
-        </select>
-
-        {(rule.compareType === 'value' || !rule.compareType) && (
-          <input
-            style={STYLES.input}
-            value={rule.compareValue || ''}
-            onChange={e => update({ compareValue: e.target.value })}
-            placeholder="Value to compare against..."
-          />
-        )}
-
-        {rule.compareType === 'lookup' && (
-          <div style={{ flex: 1, display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <select style={{ ...STYLES.select, flex: 1 }}
-              value={rule.lookupSourceId || ''}
-              onChange={e => update({ lookupSourceId: e.target.value })}
+          {/* Source */}
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Source</span>
+            <select style={{ ...STYLES.select, width: '130px', flex: 'none' }}
+              value={condition.sourceId || ''}
+              onChange={e => {
+                const updated = [...(rule.conditions || [])];
+                updated[idx] = { ...condition, sourceId: e.target.value };
+                update({ conditions: updated });
+              }}
             >
-              <option value="">Lookup source...</option>
+              <option value="">Data source...</option>
               {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+            <DiscoverableInput
+              value={condition.sourceColumn || ''}
+              onChange={val => {
+                const updated = [...(rule.conditions || [])];
+                updated[idx] = { ...condition, sourceColumn: val };
+                update({ conditions: updated });
+              }}
+              headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
+              placeholder="Header to check..."
+            />
           </div>
-        )}
-      </div>
 
-      {rule.compareType === 'lookup' && (
-        <div style={STYLES.row}>
-          <span style={STYLES.label}>Expected value</span>
-          <input
-            style={STYLES.input}
-            value={rule.compareValue || ''}
-            onChange={e => update({ compareValue: e.target.value })}
-            placeholder="Value the lookup result should equal (e.g. Terminated)..."
-          />
+          {/* Compare type */}
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Compare to</span>
+            <select style={{ ...STYLES.select, width: '140px', flex: 'none' }}
+              value={condition.compareType || 'value'}
+              onChange={e => {
+                const updated = [...(rule.conditions || [])];
+                updated[idx] = { ...condition, compareType: e.target.value };
+                update({ conditions: updated });
+              }}
+            >
+              {COMPARE_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+            </select>
+          </div>
+
+          {/* Static value */}
+          {(!condition.compareType || condition.compareType === 'value') && (
+            <>
+              <div style={STYLES.row}>
+                <span style={STYLES.label}>Operator</span>
+                <select style={STYLES.operatorSelect}
+                  value={condition.operator || 'equals'}
+                  onChange={e => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, operator: e.target.value };
+                    update({ conditions: updated });
+                  }}
+                >
+                  {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+                </select>
+              </div>
+              <div style={STYLES.row}>
+                <span style={STYLES.label}>Value</span>
+                <input
+                  style={STYLES.input}
+                  value={condition.compareValue || ''}
+                  onChange={e => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, compareValue: e.target.value };
+                    update({ conditions: updated });
+                  }}
+                  placeholder="e.g. Assigned — the value to compare against"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Lookup */}
+          {condition.compareType === 'lookup' && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={STYLES.row}>
+                <span style={STYLES.label}>Search using</span>
+                <DiscoverableInput
+                  value={condition.matchKeyColumn || ''}
+                  onChange={val => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, matchKeyColumn: val };
+                    update({ conditions: updated });
+                  }}
+                  headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
+                  placeholder="e.g. User Email — the header I will search with"
+                />
+              </div>
+              <div style={STYLES.row}>
+                <span style={STYLES.label}>Search in</span>
+                <select style={{ ...STYLES.select, width: '130px', flex: 'none' }}
+                  value={condition.lookupSourceId || ''}
+                  onChange={e => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, lookupSourceId: e.target.value };
+                    update({ conditions: updated });
+                  }}
+                >
+                  <option value="">source...</option>
+                  {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <DiscoverableInput
+                  value={condition.lookupKeyColumn || ''}
+                  onChange={val => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, lookupKeyColumn: val };
+                    update({ conditions: updated });
+                  }}
+                  headers={condition.lookupSourceId && detectedHeaders ? detectedHeaders[condition.lookupSourceId] : []}
+                  placeholder="e.g. Work email — the header to match against"
+                />
+              </div>
+              <div style={STYLES.row}>
+                <span style={STYLES.label}>Check if</span>
+                <DiscoverableInput
+                  value={condition.lookupValueColumn || ''}
+                  onChange={val => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, lookupValueColumn: val };
+                    update({ conditions: updated });
+                  }}
+                  headers={condition.lookupSourceId && detectedHeaders ? detectedHeaders[condition.lookupSourceId] : []}
+                  placeholder="e.g. Employment status — the header to read"
+                />
+                <select style={STYLES.operatorSelect}
+                  value={condition.operator || 'equals'}
+                  onChange={e => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, operator: e.target.value };
+                    update({ conditions: updated });
+                  }}
+                >
+                  {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+                </select>
+                <input
+                  style={{ ...STYLES.input, flex: 1 }}
+                  value={condition.compareValue || ''}
+                  onChange={e => {
+                    const updated = [...(rule.conditions || [])];
+                    updated[idx] = { ...condition, compareValue: e.target.value };
+                    update({ conditions: updated });
+                  }}
+                  placeholder="e.g. Terminated — the expected value"
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      {rule.compareType === 'lookup' && (
-        <>
-          <div style={STYLES.row}>
-            <span style={STYLES.label}>Match key col</span>
-            <DiscoverableInput
-              value={rule.matchKeyColumn || ''}
-              onChange={val => update({ matchKeyColumn: val })}
-              headers={rule.sourceId && detectedHeaders ? detectedHeaders[rule.sourceId] : []}
-              placeholder="Column in source to match by..."
-            />
-          </div>
-          <div style={STYLES.row}>
-            <span style={STYLES.label}>Lookup key col</span>
-            <DiscoverableInput
-              value={rule.lookupKeyColumn || ''}
-              onChange={val => update({ lookupKeyColumn: val })}
-              headers={rule.lookupSourceId && detectedHeaders ? detectedHeaders[rule.lookupSourceId] : []}
-              placeholder="Column in lookup source to match..."
-            />
-          </div>
-          <div style={STYLES.row}>
-            <span style={STYLES.label}>Lookup value col</span>
-            <DiscoverableInput
-              value={rule.lookupValueColumn || ''}
-              onChange={val => update({ lookupValueColumn: val })}
-              headers={rule.lookupSourceId && detectedHeaders ? detectedHeaders[rule.lookupSourceId] : []}
-              placeholder="Column to get value from..."
-            />
-          </div>
-        </>
-      )}
+      ))}
+
+      {/* Add condition button */}
+      <button
+        style={{
+          width: '100%', padding: '8px', marginTop: '10px',
+          backgroundColor: 'transparent', border: '1px dashed #2a2d3e',
+          borderRadius: '6px', color: '#6b7280', cursor: 'pointer',
+          fontSize: '12px'
+        }}
+        onClick={() => update({
+          conditions: [...(rule.conditions || []), {
+            sourceId: '', sourceColumn: '', operator: 'equals',
+            compareType: 'value', compareValue: '',
+            lookupSourceId: '', matchKeyColumn: '',
+            lookupKeyColumn: '', lookupValueColumn: ''
+          }]
+        })}
+      >
+        + Add Condition
+      </button>
     </div>
   );
 }
@@ -526,7 +752,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
                   {asset.enabled ? '⏸ Disable' : '▶ Enable'}
                 </button>
 
-                {/* Processing Steps */}
                 <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '6px', fontWeight: '500' }}>
                   🔧 Processing Steps
                 </div>
@@ -551,7 +776,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
                   </div>
                 )}
 
-                {/* Audit Rules */}
                 <div style={{ fontSize: '11px', color: '#a78bfa', marginBottom: '6px', fontWeight: '500' }}>
                   🔍 Audit Rules
                 </div>
@@ -635,19 +859,8 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleAddRule() {
     const newRule = {
       id: `rule_${Date.now()}`,
-      name: '',
-      flagReason: '',
-      category: '',
-      severity: 5,
-      sourceId: '',
-      sourceColumn: '',
-      operator: 'equals',
-      compareType: 'value',
-      compareValue: '',
-      lookupSourceId: '',
-      matchKeyColumn: '',
-      lookupKeyColumn: '',
-      lookupValueColumn: ''
+      name: '', flagReason: '', category: '', severity: 5,
+      conditions: []
     };
     onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
   }
@@ -673,9 +886,9 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Audit rules define what to check during an audit. Each rule compares a column
-        value using an operator against either a static value or a value looked up from
-        another data source. Rules run in priority order (1 = first). Each rule is assigned
+        💡 Audit rules define what to check during an audit. Each rule compares a header
+        value using an operator against either a static value or a lookup from another
+        data source. Rules run in priority order (1 = first). Each rule is assigned
         to a category which becomes a tab in your output report.
         {categories.length === 0 && (
           <span style={{ color: '#fca5a5' }}> ⚠ Add categories in Settings → Categories first.</span>
@@ -730,9 +943,7 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Module Manager</h2>
-      <p style={STYLES.subtitle}>
-        Define asset types and build audit rules.
-      </p>
+      <p style={STYLES.subtitle}>Define asset types and build audit rules.</p>
 
       <div style={STYLES.tabs}>
         {tabs.map(tab => (
