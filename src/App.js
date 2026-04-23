@@ -56,6 +56,7 @@ export default function App() {
           <DataSources
             dataSources={dataSources}
             onDataSourcesUpdate={handleDataSourcesUpdate}
+            processingSteps={config.processingSteps || []}
           />
         );
       case 'modules':

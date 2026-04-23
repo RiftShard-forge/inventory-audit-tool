@@ -194,7 +194,7 @@ function evaluateRule(rule, row, allSources) {
 // MAIN AUDIT FUNCTION
 // =================================================================
 
-export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps) {
+export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw) {
   const { selectedRules = [], whitelist = [], blacklist = [] } = assetTypeConfig;
 
   // STEP 1: Get applicable rules sorted by severity
@@ -202,17 +202,39 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     .filter(rule => selectedRules.includes(rule.id))
     .sort((a, b) => (a.severity || 10) - (b.severity || 10));
 
-  // STEP 2: Run processing steps
+  // STEP 2: Run processing steps per source
+  // Primary source uses its own selected steps
   let processedRows = [...primarySource.rows];
 
   if (processingSteps && processingSteps.length > 0) {
-    const selectedStepIds = assetTypeConfig.selectedProcessingSteps || [];
+    const selectedStepIds = primarySource.selectedProcessingSteps || [];
     const stepsToRun = processingSteps
       .filter(step => step.enabled && selectedStepIds.includes(step.id))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-
     stepsToRun.forEach(step => {
       processedRows = runProcessingStep(processedRows, step);
+    });
+  }
+
+  // Process all other sources using their own selected steps
+  const processedSources = { ...allSources };
+  if (allSourcesRaw && processingSteps && processingSteps.length > 0) {
+    Object.keys(allSourcesRaw).forEach(sourceId => {
+      const source = allSourcesRaw[sourceId];
+      if (!source || !source.rows) return;
+      const selectedStepIds = source.selectedProcessingSteps || [];
+      if (selectedStepIds.length === 0) return;
+
+      const stepsToRun = processingSteps
+        .filter(step => step.enabled && selectedStepIds.includes(step.id))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      let processedSourceRows = [...source.rows];
+      stepsToRun.forEach(step => {
+        processedSourceRows = runProcessingStep(processedSourceRows, step);
+      });
+
+      processedSources[sourceId] = { ...source, rows: processedSourceRows };
     });
   }
 
@@ -241,7 +263,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
 
     for (const rule of applicableRules) {
       try {
-        const triggered = evaluateRule(rule, row, allSources);
+        const triggered = evaluateRule(rule, row, processedSources);
         if (triggered) {
           findings.push({ rule, reason: rule.flagReason || rule.name });
         }

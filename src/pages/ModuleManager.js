@@ -752,30 +752,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
                   {asset.enabled ? '⏸ Disable' : '▶ Enable'}
                 </button>
 
-                <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '6px', fontWeight: '500' }}>
-                  🔧 Processing Steps
-                </div>
-                {processingSteps.length === 0 ? (
-                  <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
-                    No processing steps defined yet. Add them in Settings → Processing.
-                  </div>
-                ) : (
-                  <div style={{ marginBottom: '10px' }}>
-                    {processingSteps.map(step => {
-                      const isSelected = (asset.selectedProcessingSteps || []).includes(step.id);
-                      return (
-                        <span
-                          key={step.id}
-                          style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipProcessing : {}) }}
-                          onClick={() => handleToggleStep(assetId, step.id)}
-                        >
-                          {step.name || step.id}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
                 <div style={{ fontSize: '11px', color: '#a78bfa', marginBottom: '6px', fontWeight: '500' }}>
                   🔍 Audit Rules
                 </div>

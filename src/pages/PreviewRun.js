@@ -178,11 +178,12 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
       }
 
       const auditResults = runAudit(
-        primarySource,
+        { ...primarySource, selectedProcessingSteps: primarySource.selectedProcessingSteps || [] },
         dataSources,
         selectedAssetConfig,
         auditRules,
-        processingSteps
+        processingSteps,
+        dataSources
       );
 
       setResults({ ...auditResults, assetName: selectedAssetConfig.name });
