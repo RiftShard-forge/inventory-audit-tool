@@ -15,55 +15,46 @@ const STYLES = {
     backgroundColor: '#1a1d27', border: '1px solid #2a2d3e',
     borderRadius: '12px', overflow: 'hidden', marginBottom: '24px'
   },
-  summaryHeader: {
-    padding: '16px 20px', borderBottom: '1px solid #2a2d3e'
-  },
+  summaryHeader: { padding: '16px 20px', borderBottom: '1px solid #2a2d3e' },
   summaryHeaderText: { fontSize: '14px', fontWeight: '500', color: '#9ca3af' },
   summaryBar: {
-    display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
+    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '1px', backgroundColor: '#2a2d3e'
   },
-  summaryCell: {
-    backgroundColor: '#0f1117', padding: '16px',
-    textAlign: 'center'
-  },
+  summaryCell: { backgroundColor: '#0f1117', padding: '16px', textAlign: 'center' },
   summaryNumber: { fontSize: '22px', fontWeight: '700', marginBottom: '4px' },
   summaryLabel: { fontSize: '11px', color: '#6b7280' },
   table: { width: '100%', borderCollapse: 'collapse' },
   thead: { backgroundColor: '#1a1d27' },
   th: {
     textAlign: 'left', fontSize: '12px', fontWeight: '500',
-    color: '#6b7280', padding: '12px 16px',
-    borderBottom: '1px solid #2a2d3e'
+    color: '#6b7280', padding: '12px 16px', borderBottom: '1px solid #2a2d3e'
   },
   tr: { borderBottom: '1px solid #1f2235' },
-  td: { padding: '14px 16px', fontSize: '13px', color: '#e0e0e0', verticalAlign: 'middle' },
-  tdMuted: { padding: '14px 16px', fontSize: '12px', color: '#6b7280', verticalAlign: 'middle' },
+  td: { padding: '14px 16px', fontSize: '13px', color: '#e0e0e0', verticalAlign: 'top' },
+  tdMuted: { padding: '14px 16px', fontSize: '12px', color: '#6b7280', verticalAlign: 'top' },
   badge: {
     display: 'inline-block', fontSize: '11px', fontWeight: '500',
-    padding: '3px 10px', borderRadius: '20px', border: '1px solid'
+    padding: '3px 10px', borderRadius: '20px', border: '1px solid',
+    color: '#6366f1', borderColor: '#3730a3', backgroundColor: '#1e1b4b'
   },
-  statRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-  stat: { fontSize: '12px' }
-};
-
-const ASSET_BADGE_COLORS = {
-  Workstations: { color: '#6366f1', borderColor: '#3730a3', backgroundColor: '#1e1b4b' },
-  Monitors: { color: '#38bdf8', borderColor: '#0c4a6e', backgroundColor: '#0c1a2e' },
-  Headsets: { color: '#fb923c', borderColor: '#7c2d12', backgroundColor: '#1f1108' }
+  categoryPill: {
+    display: 'inline-block', fontSize: '11px', padding: '2px 8px',
+    borderRadius: '4px', backgroundColor: '#1e1b4b',
+    border: '1px solid #3730a3', color: '#a78bfa', margin: '2px'
+  },
+  statRow: { display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }
 };
 
 export default function History({ config }) {
   const history = config.runHistory || [];
 
   const totals = history.reduce((acc, entry) => {
-    acc.terminated += entry.terminated || 0;
-    acc.unaccounted += entry.unaccounted || 0;
-    acc.flagged += entry.flagged || 0;
-    acc.blacklisted += entry.blacklisted || 0;
-    acc.clean += entry.clean || 0;
+    acc.totalProcessed += entry.totalProcessed || 0;
+    acc.totalFlagged += entry.totalFlagged || 0;
+    acc.totalClean += entry.totalClean || 0;
     return acc;
-  }, { terminated: 0, unaccounted: 0, flagged: 0, blacklisted: 0, clean: 0 });
+  }, { totalProcessed: 0, totalFlagged: 0, totalClean: 0 });
 
   if (history.length === 0) {
     return (
@@ -74,7 +65,7 @@ export default function History({ config }) {
           <div style={STYLES.emptyIcon}>◷</div>
           <div style={STYLES.emptyTitle}>No audit runs yet</div>
           <div style={STYLES.emptyDesc}>
-            Run your first audit from the "Run Audit" page and it will appear here.
+            Configure your rules and run your first audit from the Preview & Run page.
           </div>
         </div>
       </div>
@@ -97,24 +88,16 @@ export default function History({ config }) {
         </div>
         <div style={STYLES.summaryBar}>
           <div style={STYLES.summaryCell}>
-            <div style={{ ...STYLES.summaryNumber, color: '#f87171' }}>{totals.terminated}</div>
-            <div style={STYLES.summaryLabel}>Terminated</div>
+            <div style={{ ...STYLES.summaryNumber, color: '#e0e0e0' }}>{totals.totalProcessed}</div>
+            <div style={STYLES.summaryLabel}>Total Processed</div>
           </div>
           <div style={STYLES.summaryCell}>
-            <div style={{ ...STYLES.summaryNumber, color: '#fb923c' }}>{totals.unaccounted}</div>
-            <div style={STYLES.summaryLabel}>Unaccounted</div>
+            <div style={{ ...STYLES.summaryNumber, color: '#f87171' }}>{totals.totalFlagged}</div>
+            <div style={STYLES.summaryLabel}>Total Flagged</div>
           </div>
           <div style={STYLES.summaryCell}>
-            <div style={{ ...STYLES.summaryNumber, color: '#facc15' }}>{totals.flagged}</div>
-            <div style={STYLES.summaryLabel}>Flagged</div>
-          </div>
-          <div style={STYLES.summaryCell}>
-            <div style={{ ...STYLES.summaryNumber, color: '#a78bfa' }}>{totals.blacklisted}</div>
-            <div style={STYLES.summaryLabel}>Suppressed</div>
-          </div>
-          <div style={STYLES.summaryCell}>
-            <div style={{ ...STYLES.summaryNumber, color: '#34d399' }}>{totals.clean}</div>
-            <div style={STYLES.summaryLabel}>Clean</div>
+            <div style={{ ...STYLES.summaryNumber, color: '#34d399' }}>{totals.totalClean}</div>
+            <div style={STYLES.summaryLabel}>Total Clean</div>
           </div>
         </div>
       </div>
@@ -126,49 +109,39 @@ export default function History({ config }) {
             <tr>
               <th style={STYLES.th}>Date & Time</th>
               <th style={STYLES.th}>Asset Type</th>
-              <th style={STYLES.th}>Files Used</th>
+              <th style={STYLES.th}>Sources Used</th>
               <th style={STYLES.th}>Results</th>
             </tr>
           </thead>
           <tbody>
-            {history.map((entry, index) => {
-              const badgeColor = ASSET_BADGE_COLORS[entry.asset] || {
-                color: '#9ca3af', borderColor: '#374151', backgroundColor: '#1f2937'
-              };
-              return (
-                <tr key={index} style={STYLES.tr}>
-                  <td style={STYLES.tdMuted}>{entry.date}</td>
-                  <td style={STYLES.td}>
-                    <span style={{ ...STYLES.badge, ...badgeColor }}>
-                      {entry.asset}
+            {history.map((entry, index) => (
+              <tr key={index} style={STYLES.tr}>
+                <td style={STYLES.tdMuted}>{entry.date}</td>
+                <td style={STYLES.td}>
+                  <span style={STYLES.badge}>{entry.asset}</span>
+                </td>
+                <td style={STYLES.tdMuted}>
+                  {(entry.sources || '').split(', ').map(s => (
+                    <div key={s}>{s}</div>
+                  ))}
+                </td>
+                <td style={STYLES.td}>
+                  <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                    <span style={{ color: '#34d399' }}>● {entry.totalClean} clean</span>
+                    {' · '}
+                    <span style={{ color: '#f87171' }}>● {entry.totalFlagged} flagged</span>
+                    {entry.totalBlacklisted > 0 && (
+                      <span style={{ color: '#a78bfa' }}>{' · '}● {entry.totalBlacklisted} suppressed</span>
+                    )}
+                  </div>
+                  {entry.byCategory && Object.entries(entry.byCategory).map(([cat, count]) => (
+                    <span key={cat} style={STYLES.categoryPill}>
+                      {cat}: {count}
                     </span>
-                  </td>
-                  <td style={STYLES.tdMuted}>
-                    <div>{entry.meFile}</div>
-                    <div>{entry.rosterFile}</div>
-                  </td>
-                  <td style={STYLES.td}>
-                    <div style={STYLES.statRow}>
-                      <span style={{ ...STYLES.stat, color: '#f87171' }}>
-                        ● {entry.terminated} terminated
-                      </span>
-                      <span style={{ ...STYLES.stat, color: '#fb923c' }}>
-                        ● {entry.unaccounted} unaccounted
-                      </span>
-                      <span style={{ ...STYLES.stat, color: '#facc15' }}>
-                        ● {entry.flagged || 0} flagged
-                      </span>
-                      <span style={{ ...STYLES.stat, color: '#a78bfa' }}>
-                        ● {entry.blacklisted} suppressed
-                      </span>
-                      <span style={{ ...STYLES.stat, color: '#34d399' }}>
-                        ● {entry.clean} clean
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  ))}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
