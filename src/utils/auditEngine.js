@@ -1,9 +1,8 @@
 // auditEngine.js
-// Rebuilt audit engine supporting modular processing and audit modules
+// Rule-based audit engine — fully user-defined, no hardcoded logic
 
 /**
- * Parses a CSV string into an array of objects using the header row as keys.
- * Handles quoted fields and commas inside quotes.
+ * Parses a CSV string into header and rows.
  */
 export function parseCsv(text) {
   const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -29,59 +28,34 @@ export function parseCsv(text) {
     values.push(current.trim());
 
     const obj = {};
-    header.forEach((h, i) => {
-      obj[h] = values[i] || '';
-    });
+    header.forEach((h, i) => { obj[h] = values[i] || ''; });
     return obj;
   });
 
   return { header, rows };
 }
 
-/**
- * Builds a fast lookup map from the Rippling roster data.
- * Key: username (email without domain). Value: { status, fullEmail }
- */
-export function buildRosterMap(rosterRows) {
-  const map = {};
-  for (const row of rosterRows) {
-    const email = (row['Work email'] || '').toLowerCase().trim();
-    const status = (row['Employment status'] || '').trim();
-    if (!email) continue;
-    const username = email.includes('@') ? email.split('@')[0] : email;
-    if (!map[username] || map[username].status === 'Terminated') {
-      map[username] = { status, fullEmail: email };
-    }
-  }
-  return map;
-}
-
 // =================================================================
-// PROCESSING MODULES
-// These run first and transform/normalize the data before auditing
+// PROCESSING MODULE RUNNERS
+// These normalize/transform data before auditing
 // =================================================================
 
-/**
- * Normalizes site names using the configured mappings.
- */
 function runSiteNormalization(rows, moduleConfig) {
   const { mappings = {} } = moduleConfig.config;
-  const siteCol = moduleConfig.config.columnMapping?.site || 'Site';
-
   return rows.map(row => {
-    const rawSite = row[siteCol] || '';
-    return {
-      ...row,
-      [siteCol]: mappings[rawSite] || rawSite
-    };
+    const newRow = { ...row };
+    Object.keys(newRow).forEach(key => {
+      if (mappings[newRow[key]]) {
+        newRow[key] = mappings[newRow[key]];
+      }
+    });
+    return newRow;
   });
 }
 
-/**
- * Strips email domain from configured columns.
- */
 function runEmailNormalization(rows, moduleConfig) {
   const domain = moduleConfig.config.domainToStrip || '';
+  if (!domain) return rows;
   return rows.map(row => {
     const newRow = { ...row };
     Object.keys(newRow).forEach(key => {
@@ -93,13 +67,9 @@ function runEmailNormalization(rows, moduleConfig) {
   });
 }
 
-/**
- * Tags rows by OS category.
- */
 function runOsFilter(rows, moduleConfig) {
   const { categories = {}, columnMapping = {} } = moduleConfig.config;
   const osCol = columnMapping.osName || 'OS Name';
-
   return rows.map(row => {
     const os = row[osCol] || '';
     let osCategory = 'Other';
@@ -110,17 +80,9 @@ function runOsFilter(rows, moduleConfig) {
   });
 }
 
-/**
- * Tags rows by state category (active vs flagged).
- */
 function runStateFilter(rows, moduleConfig) {
-  const {
-    activeStates = [],
-    flaggedStates = [],
-    columnMapping = {}
-  } = moduleConfig.config;
+  const { activeStates = [], flaggedStates = [], columnMapping = {} } = moduleConfig.config;
   const stateCol = columnMapping.state || 'State';
-
   return rows.map(row => {
     const state = row[stateCol] || '';
     let stateCategory = 'other';
@@ -131,192 +93,127 @@ function runStateFilter(rows, moduleConfig) {
 }
 
 // =================================================================
-// AUDIT MODULES
-// These run after processing and produce flagged rows
+// PROCESSING STEP RUNNERS
 // =================================================================
 
 /**
- * Checks if assigned user email is Active or Terminated in Rippling.
- */
-function runEmailVsRoster(row, rosterMap, moduleConfig) {
-  const emailCol = moduleConfig.config.columnMapping?.userEmail || 'User Email';
-  const userEmail = (row[emailCol] || '').toLowerCase().trim();
-  const username = userEmail.includes('@') ? userEmail.split('@')[0] : userEmail;
+ * Runs a single processing step against all rows.
+ * Types:
+ *   mapValue  — replace specific values in a column with mapped values
+ *   stripText — remove a substring from values in a column
+ *   tagByValue — add a tag column based on value matching
+*/
+function runProcessingStep(rows, step) {
+  const { type, columnName, config: stepConfig } = step;
+  if (!columnName) return rows;
 
-  if (!username) return null;
-
-  const rosterEntry = rosterMap[username];
-  if (!rosterEntry) return null;
-
-  if (rosterEntry.status === 'Terminated') {
-    return { module: 'emailVsRoster', reason: 'Terminated User (assigned email)' };
-  }
-  return null;
-}
-
-/**
- * Checks if last logged in user is Active or Terminated in Rippling.
- */
-function runLastLoginVsRoster(row, rosterMap, moduleConfig) {
-  const loginCol = moduleConfig.config.columnMapping?.lastLogin || 'Last Logged In User';
-  const lastLogin = (row[loginCol] || '').toLowerCase().trim();
-
-  if (!lastLogin || lastLogin === 'defaultuser0') return null;
-
-  const rosterEntry = rosterMap[lastLogin];
-  if (!rosterEntry) return null;
-
-  if (rosterEntry.status === 'Terminated') {
-    return { module: 'lastLoginVsRoster', reason: 'Terminated User (last login)' };
-  }
-  return null;
-}
-
-/**
- * Checks if assigned email matches last logged in user.
- */
-function runEmailVsLastLogin(row, rosterMap, moduleConfig) {
-  const emailCol = moduleConfig.config.columnMapping?.userEmail || 'User Email';
-  const loginCol = moduleConfig.config.columnMapping?.lastLogin || 'Last Logged In User';
-
-  const userEmail = (row[emailCol] || '').toLowerCase().trim();
-  const lastLogin = (row[loginCol] || '').toLowerCase().trim();
-
-  const username = userEmail.includes('@') ? userEmail.split('@')[0] : userEmail;
-
-  if (!username || !lastLogin) return null;
-  if (lastLogin === 'defaultuser0') return null;
-
-  if (!areUsernamesEquivalent(username, lastLogin)) {
-    return { module: 'emailVsLastLogin', reason: 'User Email and Last Login do not match' };
-  }
-  return null;
-}
-
-/**
- * Checks for state conflicts.
- */
-function runStateConflict(row, rosterMap, moduleConfig) {
-  const {
-    invalidAssignedUser = 'defaultuser0',
-    invalidAvailableUsers = ['defaultuser0', 'default'],
-    columnMapping = {}
-  } = moduleConfig.config;
-
-  const stateCol = columnMapping.state || 'State';
-  const loginCol = columnMapping.lastLogin || 'Last Logged In User';
-
-  const state = row[stateCol] || '';
-  const lastLogin = (row[loginCol] || '').toLowerCase().trim();
-
-  if (state === 'Available' && !invalidAvailableUsers.includes(lastLogin) && lastLogin !== '') {
-    return { module: 'stateConflict', reason: 'State is Available but has an active user' };
-  }
-
-  if (state === 'Assigned' && lastLogin === invalidAssignedUser) {
-    return { module: 'stateConflict', reason: 'State is Assigned but user is defaultuser0' };
-  }
-
-  return null;
-}
-
-/**
- * Checks if asset has no user email on record.
- */
-function runUnaccounted(row, rosterMap, moduleConfig) {
-  const emailCol = moduleConfig.config.columnMapping?.userEmail || 'User Email';
-  const userEmail = (row[emailCol] || '').trim();
-
-  if (!userEmail) {
-    return { module: 'unaccounted', reason: 'No user email on record' };
-  }
-
-  const username = userEmail.includes('@') ? userEmail.split('@')[0] : userEmail;
-  const rosterEntry = rosterMap[username];
-
-  if (!rosterEntry) {
-    return { module: 'unaccounted', reason: 'User not found in Rippling roster' };
-  }
-
-  return null;
-}
-
-/**
- * Checks if hardware model is in the known models list.
- */
-function runOutstandingModels(row, rosterMap, moduleConfig) {
-  const { knownModels = [], columnMapping = {} } = moduleConfig.config;
-  const modelCol = columnMapping.model || 'Model';
-  const model = row[modelCol] || '';
-
-  if (knownModels.length === 0) return null;
-  if (!knownModels.includes(model)) {
-    return { module: 'outstandingModels', reason: `Unknown model: ${model}` };
-  }
-  return null;
-}
-
-/**
- * Checks if computer prefix matches expected location.
- */
-function runLocationMismatch(row, rosterMap, moduleConfig) {
-  const { prefixLocationMap = {}, columnMapping = {} } = moduleConfig.config;
-  const computerCol = columnMapping.computer || 'Computer';
-  const siteCol = columnMapping.site || 'Site';
-
-  const computer = row[computerCol] || '';
-  const site = row[siteCol] || '';
-
-  if (Object.keys(prefixLocationMap).length === 0) return null;
-
-  for (const [prefix, expectedSite] of Object.entries(prefixLocationMap)) {
-    if (computer.startsWith(prefix) && site !== expectedSite) {
-      return {
-        module: 'locationMismatch',
-        reason: `Computer prefix ${prefix} expected at ${expectedSite} but found at ${site}`
-      };
+  switch (type) {
+    case 'mapValue': {
+      const { mappings = {} } = stepConfig;
+      return rows.map(row => {
+        const val = row[columnName];
+        return { ...row, [columnName]: mappings[val] || val };
+      });
     }
+    case 'stripText': {
+      const { textToStrip = '' } = stepConfig;
+      if (!textToStrip) return rows;
+      return rows.map(row => {
+        const val = (row[columnName] || '').toString();
+        return { ...row, [columnName]: val.replace(textToStrip, '').trim() };
+      });
+    }
+    case 'tagByValue': {
+      const { tagColumn = '_tag', valueTags = {} } = stepConfig;
+      return rows.map(row => {
+        const val = row[columnName];
+        const tag = valueTags[val] || 'other';
+        return { ...row, [tagColumn]: tag };
+      });
+    }
+    default:
+      return rows;
   }
-  return null;
+}
+// =================================================================
+// OPERATOR FUNCTIONS
+// Apply comparison logic between two values
+// =================================================================
+
+function applyOperator(sourceValue, operator, compareValue) {
+  const src = (sourceValue || '').toString().toLowerCase().trim();
+  const cmp = (compareValue || '').toString().toLowerCase().trim();
+
+  switch (operator) {
+    case 'equals': return src === cmp;
+    case 'is not': return src !== cmp;
+    case 'contains': return src.includes(cmp);
+    case 'does not contain': return !src.includes(cmp);
+    case 'starts with': return src.startsWith(cmp);
+    case 'ends with': return src.endsWith(cmp);
+    case 'is empty': return src === '';
+    case 'is not empty': return src !== '';
+    default: return src === cmp;
+  }
 }
 
 // =================================================================
-// HELPER FUNCTIONS
+// RULE EVALUATION
+// Evaluates a single rule against a single row
 // =================================================================
 
 /**
- * Checks if two usernames are equivalent.
- * Handles cases where names have different formatting.
+ * Evaluates a rule against a row from the primary source.
+ * Rules can compare:
+ *   - A column value against a static value
+ *   - A column value against a column in another data source (lookup)
  */
-function areUsernamesEquivalent(userA, userB) {
-  if (!userA || !userB) return false;
-  if (userA === userB) return true;
-  if (userA.startsWith(userB) || userB.startsWith(userA)) return true;
-  const partsA = userA.split('.').sort();
-  const partsB = userB.split('.').sort();
-  if (partsA.length !== partsB.length) return false;
-  return partsA.join('.') === partsB.join('.');
+function evaluateRule(rule, row, allSources) {
+  const {
+    sourceId,           // which data source the primary column comes from
+    sourceColumn,       // column name in that source
+    operator,           // comparison operator
+    compareType,        // 'value' or 'lookup'
+    compareValue,       // static value to compare against (if compareType === 'value')
+    lookupSourceId,     // which source to look up in (if compareType === 'lookup')
+    lookupKeyColumn,    // column in lookup source to match by
+    lookupValueColumn,  // column in lookup source to get the value from
+    matchKeyColumn      // column in primary row to use as the lookup key
+  } = rule;
+
+  // Get the source value from the primary row
+  const primaryValue = row[sourceColumn] || '';
+
+  if (compareType === 'value') {
+    // Simple comparison against a static value
+    return applyOperator(primaryValue, operator, compareValue);
+  }
+
+  if (compareType === 'lookup') {
+    // Cross-reference lookup against another data source
+    const lookupSource = allSources[lookupSourceId];
+    if (!lookupSource || !lookupSource.rows) return false;
+
+    // The key to match in the lookup source
+    const matchKey = (row[matchKeyColumn] || '').toLowerCase().trim();
+
+    // Find the matching row in the lookup source
+    const matchedRow = lookupSource.rows.find(lr => {
+      const lrKey = (lr[lookupKeyColumn] || '').toLowerCase().trim();
+      return lrKey === matchKey;
+    });
+
+    if (!matchedRow) {
+      // No match found — treat as a special case
+      return operator === 'is not found';
+    }
+
+    const lookupValue = matchedRow[lookupValueColumn] || '';
+    return applyOperator(primaryValue, operator, lookupValue);
+  }
+
+  return false;
 }
-
-/**
- * Maps module IDs to their runner functions.
- */
-const PROCESSING_RUNNERS = {
-  siteNormalization: runSiteNormalization,
-  emailNormalization: runEmailNormalization,
-  osFilter: runOsFilter,
-  stateFilter: runStateFilter
-};
-
-const AUDIT_RUNNERS = {
-  emailVsRoster: runEmailVsRoster,
-  lastLoginVsRoster: runLastLoginVsRoster,
-  emailVsLastLogin: runEmailVsLastLogin,
-  stateConflict: runStateConflict,
-  unaccounted: runUnaccounted,
-  outstandingModels: runOutstandingModels,
-  locationMismatch: runLocationMismatch
-};
 
 // =================================================================
 // MAIN AUDIT FUNCTION
@@ -324,43 +221,50 @@ const AUDIT_RUNNERS = {
 
 /**
  * Runs the full audit for a given asset type.
- * 1. Runs selected processing modules in order
- * 2. Runs selected audit modules on each row
- * 3. Returns categorized results
+ *
+ * @param {Object} primarySource - The main data source { rows, headers }
+ * @param {Object} allSources - All loaded data sources { sourceId: { rows, headers } }
+ * @param {Object} assetTypeConfig - The selected asset type config
+ * @param {Array} auditRules - All user-defined audit rules
+ * @param {Object} processingModules - Processing module configs
+ * @returns {Object} results - { byCategory, clean, summary }
  */
-export function runAudit(meDataRows, rosterMap, assetTypeConfig, modulePool) {
-  const {
-    selectedProcessingModules = [],
-    selectedAuditModules = [],
-    whitelist = [],
-    blacklist = []
-  } = assetTypeConfig;
+export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps) {
+  const { selectedRules = [], whitelist = [], blacklist = [] } = assetTypeConfig;
 
-  // --- STEP 1: Run Processing Modules ---
-  let processedRows = [...meDataRows];
+  // --- STEP 1: Get applicable rules, sorted by severity (1 first) ---
+  const applicableRules = auditRules
+    .filter(rule => selectedRules.includes(rule.id))
+    .sort((a, b) => (a.severity || 10) - (b.severity || 10));
 
-  selectedProcessingModules.forEach(moduleId => {
-    const moduleConfig = modulePool.processing[moduleId];
-    if (!moduleConfig || !moduleConfig.enabled) return;
-    const runner = PROCESSING_RUNNERS[moduleId];
-    if (runner) {
-      processedRows = runner(processedRows, moduleConfig);
-    }
-  });
+  // --- STEP 2: Run processing modules on primary source rows ---
+  let processedRows = [...primarySource.rows];
 
-  // --- STEP 2: Run Audit Modules on each row ---
-  const terminated = [];
-  const unaccounted = [];
-  const flagged = [];
-  const blacklisted = [];
+  if (processingSteps && processingSteps.length > 0) {
+    const selectedStepIds = assetTypeConfig.selectedProcessingSteps || [];
+    const stepsToRun = processingSteps
+      .filter(step => step.enabled && selectedStepIds.includes(step.id))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    stepsToRun.forEach(step => {
+      processedRows = runProcessingStep(processedRows, step);
+    });
+  }
+
+  // --- STEP 3: Evaluate rules against each row ---
+  const byCategory = {}; // { categoryName: [rows] }
   const clean = [];
+  const blacklisted = [];
 
   processedRows.forEach(row => {
-    // Check whitelist/blacklist first
-    const serial = (row['Serial Number'] || row['Serial'] || '').trim().toLowerCase();
+    // Check whitelist/blacklist
+    const serial = (
+      row['Serial Number'] || row['Serial'] ||
+      row['Computer'] || row['Asset Tag'] || ''
+    ).trim().toLowerCase();
 
     if (blacklist.some(b => b.trim().toLowerCase() === serial)) {
-      blacklisted.push({ ...row, 'Audit Reason': 'Suppressed - Blacklisted Asset' });
+      blacklisted.push({ ...row, '_Audit Reason': 'Suppressed - Blacklisted' });
       return;
     }
 
@@ -369,39 +273,58 @@ export function runAudit(meDataRows, rosterMap, assetTypeConfig, modulePool) {
       return;
     }
 
-    // Run each selected audit module
+    // Evaluate each applicable rule in severity order
     const findings = [];
 
-    selectedAuditModules.forEach(moduleId => {
-      const moduleConfig = modulePool.audit[moduleId];
-      if (!moduleConfig || !moduleConfig.enabled) return;
-      const runner = AUDIT_RUNNERS[moduleId];
-      if (!runner) return;
+    for (const rule of applicableRules) {
+      try {
+        const triggered = evaluateRule(rule, row, allSources);
+        if (triggered) {
+          findings.push({
+            rule,
+            reason: rule.flagReason || rule.name
+          });
+        }
+      } catch (e) {
+        console.warn(`Rule "${rule.name}" evaluation error:`, e.message);
+      }
+    }
 
-      const result = runner(row, rosterMap, moduleConfig);
-      if (result) findings.push(result);
-    });
-
-    // Categorize based on findings
     if (findings.length === 0) {
       clean.push(row);
       return;
     }
 
-    const reasons = findings.map(f => f.reason).join('; ');
-    const rowWithReason = { ...row, 'Audit Reason': reasons };
-
-    // Route to correct output bucket
-    const moduleIds = findings.map(f => f.module);
-
-    if (moduleIds.includes('emailVsRoster') || moduleIds.includes('lastLoginVsRoster')) {
-      terminated.push(rowWithReason);
-    } else if (moduleIds.includes('unaccounted')) {
-      unaccounted.push(rowWithReason);
-    } else {
-      flagged.push(rowWithReason);
-    }
+    // Route to categories
+    findings.forEach(finding => {
+      const category = finding.rule.category || 'Uncategorized';
+      if (!byCategory[category]) byCategory[category] = [];
+      const existingIndex = byCategory[category].findIndex(r =>
+        JSON.stringify(r) === JSON.stringify({ ...row, '_Audit Reason': finding.reason })
+      );
+      if (existingIndex === -1) {
+        byCategory[category].push({
+          ...row,
+          '_Audit Reason': finding.reason,
+          '_Rule': finding.rule.name,
+          '_Severity': finding.rule.severity || 10
+        });
+      }
+    });
   });
 
-  return { terminated, unaccounted, flagged, blacklisted, clean };
+  // --- STEP 4: Build summary ---
+  const totalFlagged = Object.values(byCategory).reduce((sum, rows) => sum + rows.length, 0);
+  const summary = {
+    totalProcessed: processedRows.length,
+    totalFlagged,
+    totalBlacklisted: blacklisted.length,
+    totalClean: clean.length,
+    byCategory: Object.keys(byCategory).reduce((acc, cat) => {
+      acc[cat] = byCategory[cat].length;
+      return acc;
+    }, {})
+  };
+
+  return { byCategory, blacklisted, clean, summary };
 }

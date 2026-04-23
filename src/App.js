@@ -71,6 +71,7 @@ export default function App() {
           <Settings
             config={config}
             onConfigUpdate={handleConfigUpdate}
+            detectedHeaders={detectedHeaders}
           />
         );
       case 'run':

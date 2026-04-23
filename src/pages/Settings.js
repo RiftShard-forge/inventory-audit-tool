@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { resetConfig } from '../config/configManager';
 
 const STYLES = {
-  page: { maxWidth: '800px' },
+  page: { maxWidth: '900px' },
   title: { fontSize: '24px', fontWeight: '600', color: '#ffffff', marginBottom: '8px' },
   subtitle: { fontSize: '14px', color: '#6b7280', marginBottom: '32px' },
   tabs: {
@@ -21,39 +21,31 @@ const STYLES = {
     borderRadius: '12px', padding: '24px', marginBottom: '16px'
   },
   sectionTitle: { fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '4px' },
-  sectionDesc: { fontSize: '12px', color: '#6b7280', marginBottom: '16px', lineHeight: '1.6' },
-  configRow: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' },
-  configLabel: { fontSize: '12px', color: '#9ca3af', width: '160px', flexShrink: 0 },
+  sectionDesc: { fontSize: '12px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6' },
   input: {
-    flex: 1, padding: '8px 12px', backgroundColor: '#0f1117',
+    padding: '8px 12px', backgroundColor: '#0f1117',
     border: '1px solid #2a2d3e', borderRadius: '6px',
-    color: '#e0e0e0', fontSize: '13px'
+    color: '#e0e0e0', fontSize: '13px', width: '100%'
   },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: {
-    textAlign: 'left', fontSize: '12px', fontWeight: '500',
-    color: '#6b7280', padding: '8px 12px',
-    borderBottom: '1px solid #2a2d3e'
+  select: {
+    padding: '8px 12px', backgroundColor: '#0f1117',
+    border: '1px solid #2a2d3e', borderRadius: '6px',
+    color: '#e0e0e0', fontSize: '13px', cursor: 'pointer', width: '100%'
   },
-  td: { padding: '10px 12px', borderBottom: '1px solid #1a1d27', fontSize: '13px' },
-  addRow: { display: 'flex', gap: '8px', marginTop: '12px' },
-  addInput: {
-    flex: 1, padding: '9px 14px', backgroundColor: '#0f1117',
-    border: '1px solid #2a2d3e', borderRadius: '8px',
-    color: '#e0e0e0', fontSize: '13px'
-  },
+  row: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' },
+  label: { fontSize: '12px', color: '#9ca3af', width: '120px', flexShrink: 0 },
   addBtn: {
     padding: '9px 16px', backgroundColor: '#6366f1', color: '#ffffff',
     border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer'
-  },
-  removeBtn: {
-    background: 'none', border: 'none', color: '#6b7280',
-    cursor: 'pointer', fontSize: '18px', lineHeight: '1'
   },
   saveBtn: {
     padding: '10px 24px', backgroundColor: '#6366f1', color: '#ffffff',
     border: 'none', borderRadius: '8px', fontSize: '14px',
     fontWeight: '500', cursor: 'pointer', marginTop: '16px'
+  },
+  removeBtn: {
+    background: 'none', border: 'none', color: '#6b7280',
+    cursor: 'pointer', fontSize: '18px', lineHeight: '1', padding: '4px'
   },
   savedMsg: { fontSize: '13px', color: '#34d399', marginTop: '10px' },
   dangerBtn: {
@@ -75,73 +67,403 @@ const STYLES = {
     padding: '8px 16px', backgroundColor: '#1a1d27', color: '#e0e0e0',
     border: '1px solid #2a2d3e', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
   },
-  tagContainer: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' },
-  tag: {
-    display: 'flex', alignItems: 'center', gap: '4px',
-    backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
-    borderRadius: '6px', padding: '3px 8px', fontSize: '12px', color: '#e0e0e0'
+  pill: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    borderRadius: '20px', padding: '4px 12px', fontSize: '12px', margin: '4px',
+    border: '1px solid'
   },
-  tagRemove: {
-    background: 'none', border: 'none', color: '#6b7280',
-    cursor: 'pointer', fontSize: '14px', lineHeight: '1', padding: '0'
+  stepCard: {
+    backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '8px', padding: '16px', marginBottom: '12px'
+  },
+  stepHeader: {
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: '12px'
+  },
+  stepTitle: { fontSize: '14px', fontWeight: '500', color: '#ffffff' },
+  stepType: {
+    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+    backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
+  },
+  mapRow: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' },
+  mapInput: {
+    flex: 1, padding: '7px 10px', backgroundColor: '#1a1d27',
+    border: '1px solid #2a2d3e', borderRadius: '6px',
+    color: '#e0e0e0', fontSize: '12px'
+  },
+  addCard: {
+    border: '2px dashed #2a2d3e', borderRadius: '8px', padding: '20px',
+    textAlign: 'center', cursor: 'pointer', color: '#6b7280',
+    fontSize: '13px', marginTop: '8px'
+  },
+  infoBox: {
+    backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '8px', padding: '12px', marginBottom: '16px',
+    fontSize: '12px', color: '#6b7280', lineHeight: '1.6'
   }
 };
 
+const STEP_TYPES = [
+  { value: 'mapValue', label: 'Map Value', desc: 'Replace specific values in a column with normalized values (e.g. "Base Site" → "Santo Domingo Office")' },
+  { value: 'stripText', label: 'Strip Text', desc: 'Remove a substring from all values in a column (e.g. strip "@company.co" from emails)' },
+  { value: 'tagByValue', label: 'Tag by Value', desc: 'Add a new tag column based on the value of another column (e.g. tag rows by OS type)' }
+];
+
 // =============================================
-// SITE NORMALIZATION TAB
+// PROCESSING STEP CARD
 // =============================================
-function SiteNormalizationTab({ config, onConfigUpdate }) {
+function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
   const [newFrom, setNewFrom] = useState('');
   const [newTo, setNewTo] = useState('');
+  const [newTagVal, setNewTagVal] = useState('');
+  const [newTagLabel, setNewTagLabel] = useState('');
+
+  const headers = detectedHeaders
+    ? Object.values(detectedHeaders).flat()
+    : [];
+
+  function update(changes) {
+    onUpdate({ ...step, ...changes });
+  }
+
+  function updateConfig(changes) {
+    onUpdate({ ...step, config: { ...step.config, ...changes } });
+  }
+
+  function addMapping() {
+    if (!newFrom.trim() || !newTo.trim()) return;
+    const updated = { ...step.config.mappings, [newFrom.trim()]: newTo.trim() };
+    updateConfig({ mappings: updated });
+    setNewFrom(''); setNewTo('');
+  }
+
+  function removeMapping(key) {
+    const updated = { ...step.config.mappings };
+    delete updated[key];
+    updateConfig({ mappings: updated });
+  }
+
+  function addTag() {
+    if (!newTagVal.trim() || !newTagLabel.trim()) return;
+    const updated = { ...step.config.valueTags, [newTagVal.trim()]: newTagLabel.trim() };
+    updateConfig({ valueTags: updated });
+    setNewTagVal(''); setNewTagLabel('');
+  }
+
+  function removeTag(key) {
+    const updated = { ...step.config.valueTags };
+    delete updated[key];
+    updateConfig({ valueTags: updated });
+  }
+
+  return (
+    <div style={STYLES.stepCard}>
+      <div style={STYLES.stepHeader}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={STYLES.stepTitle}>{step.name || 'Unnamed Step'}</span>
+          <span style={STYLES.stepType}>
+            {STEP_TYPES.find(t => t.value === step.type)?.label || step.type}
+          </span>
+          <span style={{
+            fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+            backgroundColor: step.enabled ? '#0f1f17' : '#1f2937',
+            border: `1px solid ${step.enabled ? '#064e3b' : '#374151'}`,
+            color: step.enabled ? '#34d399' : '#9ca3af',
+            cursor: 'pointer'
+          }}
+            onClick={() => update({ enabled: !step.enabled })}
+          >
+            {step.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+        <button style={STYLES.removeBtn} onClick={onRemove}>×</button>
+      </div>
+
+      {/* Step name */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Step name</span>
+        <input
+          style={STYLES.input}
+          value={step.name || ''}
+          onChange={e => update({ name: e.target.value })}
+          placeholder="e.g. Normalize site names"
+        />
+      </div>
+
+      {/* Column to apply to */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Apply to column</span>
+        <input
+          style={STYLES.input}
+          value={step.columnName || ''}
+          onChange={e => update({ columnName: e.target.value })}
+          placeholder="Header name from your CSV..."
+          list={`headers-${step.id}`}
+        />
+        <datalist id={`headers-${step.id}`}>
+          {headers.map(h => <option key={h} value={h} />)}
+        </datalist>
+      </div>
+
+      {/* Order */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Run order</span>
+        <input
+          style={{ ...STYLES.input, width: '80px', flex: 'none' }}
+          type="number"
+          min="1"
+          value={step.order || 1}
+          onChange={e => update({ order: parseInt(e.target.value) || 1 })}
+        />
+        <span style={{ fontSize: '12px', color: '#4b5563' }}>Lower number runs first</span>
+      </div>
+
+      {/* mapValue config */}
+      {step.type === 'mapValue' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
+            Value Mappings
+          </div>
+          <div style={STYLES.infoBox}>
+            Define what values should be replaced. Left = raw value in CSV, Right = normalized value.
+          </div>
+          {Object.entries(step.config.mappings || {}).map(([from, to]) => (
+            <div key={from} style={STYLES.mapRow}>
+              <input style={STYLES.mapInput} defaultValue={from} readOnly />
+              <span style={{ color: '#6b7280', fontSize: '12px' }}>→</span>
+              <input style={STYLES.mapInput} defaultValue={to} readOnly />
+              <button style={STYLES.removeBtn} onClick={() => removeMapping(from)}>×</button>
+            </div>
+          ))}
+          <div style={STYLES.mapRow}>
+            <input
+              style={STYLES.mapInput}
+              placeholder="Raw value..."
+              value={newFrom}
+              onChange={e => setNewFrom(e.target.value)}
+              list={`headers-map-${step.id}`}
+            />
+            <span style={{ color: '#6b7280', fontSize: '12px' }}>→</span>
+            <input
+              style={STYLES.mapInput}
+              placeholder="Normalized value..."
+              value={newTo}
+              onChange={e => setNewTo(e.target.value)}
+            />
+            <button style={STYLES.addBtn} onClick={addMapping}>+ Add</button>
+          </div>
+        </div>
+      )}
+
+      {/* stripText config */}
+      {step.type === 'stripText' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Text to strip</span>
+            <input
+              style={STYLES.input}
+              value={step.config.textToStrip || ''}
+              onChange={e => updateConfig({ textToStrip: e.target.value })}
+              placeholder="e.g. @company.co"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* tagByValue config */}
+      {step.type === 'tagByValue' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Tag column name</span>
+            <input
+              style={STYLES.input}
+              value={step.config.tagColumn || ''}
+              onChange={e => updateConfig({ tagColumn: e.target.value })}
+              placeholder="e.g. _osCategory"
+            />
+          </div>
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500', marginTop: '8px' }}>
+            Value → Tag Mappings
+          </div>
+          {Object.entries(step.config.valueTags || {}).map(([val, tag]) => (
+            <div key={val} style={STYLES.mapRow}>
+              <input style={STYLES.mapInput} defaultValue={val} readOnly />
+              <span style={{ color: '#6b7280', fontSize: '12px' }}>→</span>
+              <input style={STYLES.mapInput} defaultValue={tag} readOnly />
+              <button style={STYLES.removeBtn} onClick={() => removeTag(val)}>×</button>
+            </div>
+          ))}
+          <div style={STYLES.mapRow}>
+            <input
+              style={STYLES.mapInput}
+              placeholder="Column value..."
+              value={newTagVal}
+              onChange={e => setNewTagVal(e.target.value)}
+            />
+            <span style={{ color: '#6b7280', fontSize: '12px' }}>→</span>
+            <input
+              style={STYLES.mapInput}
+              placeholder="Tag label..."
+              value={newTagLabel}
+              onChange={e => setNewTagLabel(e.target.value)}
+            />
+            <button style={STYLES.addBtn} onClick={addTag}>+ Add</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// PROCESSING TAB
+// =============================================
+function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [saved, setSaved] = useState(false);
+  const steps = config.processingSteps || [];
 
-  const mappings = config.modulePool?.processing?.siteNormalization?.config?.mappings || {};
+  function handleAddStep(type) {
+    const id = `step_${Date.now()}`;
+    const defaultConfig = type === 'mapValue'
+      ? { mappings: {} }
+      : type === 'stripText'
+        ? { textToStrip: '' }
+        : { tagColumn: '_tag', valueTags: {} };
 
-  function updateMappings(newMappings) {
+    const newStep = {
+      id,
+      name: '',
+      type,
+      columnName: '',
+      enabled: true,
+      order: steps.length + 1,
+      config: defaultConfig
+    };
+
+    onConfigUpdate({ ...config, processingSteps: [...steps, newStep] });
+    setShowTypeSelector(false);
+    setSaved(false);
+  }
+
+  function handleUpdateStep(stepId, updatedStep) {
     onConfigUpdate({
       ...config,
-      modulePool: {
-        ...config.modulePool,
-        processing: {
-          ...config.modulePool.processing,
-          siteNormalization: {
-            ...config.modulePool.processing.siteNormalization,
-            config: {
-              ...config.modulePool.processing.siteNormalization.config,
-              mappings: newMappings
-            }
-          }
-        }
-      }
+      processingSteps: steps.map(s => s.id === stepId ? updatedStep : s)
     });
     setSaved(false);
   }
 
-  function handleAdd() {
-    if (!newFrom.trim() || !newTo.trim()) return;
-    updateMappings({ ...mappings, [newFrom.trim()]: newTo.trim() });
-    setNewFrom('');
-    setNewTo('');
-  }
-
-  function handleRemove(key) {
-    const updated = { ...mappings };
-    delete updated[key];
-    updateMappings(updated);
-  }
-
-  function handleEdit(oldKey, field, value) {
-    const entries = Object.entries(mappings);
-    const newMappings = {};
-    entries.forEach(([k, v]) => {
-      if (k === oldKey) {
-        if (field === 'key') newMappings[value] = v;
-        else newMappings[k] = value;
-      } else {
-        newMappings[k] = v;
-      }
+  function handleRemoveStep(stepId) {
+    onConfigUpdate({
+      ...config,
+      processingSteps: steps.filter(s => s.id !== stepId)
     });
-    updateMappings(newMappings);
+    setSaved(false);
+  }
+
+  function handleSave() {
+    onConfigUpdate(config);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <div>
+      <div style={STYLES.infoBox}>
+        💡 Processing steps run before audit rules to clean and normalize your data.
+        Steps run in the order number you assign. Lower = runs first.
+        Each asset type selects which steps apply to it in Module Manager.
+      </div>
+
+      {steps.length === 0 && (
+        <div style={{ ...STYLES.section, textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔧</div>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '8px' }}>
+            No processing steps defined yet
+          </div>
+          <div style={{ fontSize: '13px' }}>
+            Add a step to normalize your data before auditing.
+            Examples: map site names, strip email domains, tag by OS type.
+          </div>
+        </div>
+      )}
+
+      {steps
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map(step => (
+          <ProcessingStepCard
+            key={step.id}
+            step={step}
+            onUpdate={updated => handleUpdateStep(step.id, updated)}
+            onRemove={() => handleRemoveStep(step.id)}
+            detectedHeaders={detectedHeaders}
+          />
+        ))}
+
+      {showTypeSelector ? (
+        <div style={STYLES.section}>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '16px' }}>
+            Select step type:
+          </div>
+          {STEP_TYPES.map(type => (
+            <div
+              key={type.value}
+              style={{
+                padding: '14px 16px', backgroundColor: '#0f1117',
+                border: '1px solid #2a2d3e', borderRadius: '8px',
+                marginBottom: '8px', cursor: 'pointer',
+                transition: 'border-color 0.15s ease'
+              }}
+              onClick={() => handleAddStep(type.value)}
+            >
+              <div style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff', marginBottom: '4px' }}>
+                {type.label}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>{type.desc}</div>
+            </div>
+          ))}
+          <button
+            style={{ ...STYLES.saveBtn, backgroundColor: '#374151', marginTop: '8px' }}
+            onClick={() => setShowTypeSelector(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={STYLES.addCard} onClick={() => setShowTypeSelector(true)}>
+          + Add Processing Step
+        </div>
+      )}
+
+      {steps.length > 0 && (
+        <>
+          <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save Processing Steps</button>
+          {saved && <div style={STYLES.savedMsg}>✓ Saved successfully.</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// CATEGORIES TAB
+// =============================================
+function CategoriesTab({ config, onConfigUpdate }) {
+  const [newCategory, setNewCategory] = useState('');
+  const [saved, setSaved] = useState(false);
+  const categories = config.auditCategories || [];
+
+  function handleAdd() {
+    const trimmed = newCategory.trim();
+    if (!trimmed || categories.includes(trimmed)) return;
+    onConfigUpdate({ ...config, auditCategories: [...categories, trimmed] });
+    setNewCategory('');
+    setSaved(false);
+  }
+
+  function handleRemove(cat) {
+    onConfigUpdate({ ...config, auditCategories: categories.filter(c => c !== cat) });
   }
 
   function handleSave() {
@@ -152,298 +474,44 @@ function SiteNormalizationTab({ config, onConfigUpdate }) {
 
   return (
     <div style={STYLES.section}>
-      <div style={STYLES.sectionTitle}>Site Name Mappings</div>
+      <div style={STYLES.sectionTitle}>Audit Categories</div>
       <p style={STYLES.sectionDesc}>
-        Define how raw site names from your CSV exports are normalized before
-        the audit runs. These mappings apply to all asset types that have
-        Site Normalization enabled.
+        Define categories for your audit rules. Each category becomes a separate
+        tab in your exported .xlsx report. Examples: Terminated, Unaccounted,
+        State Conflict, Location Mismatch.
       </p>
 
-      <table style={STYLES.table}>
-        <thead>
-          <tr>
-            <th style={STYLES.th}>Raw name in CSV</th>
-            <th style={STYLES.th}>Normalized name</th>
-            <th style={STYLES.th}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.keys(mappings).length === 0 && (
-            <tr>
-              <td style={STYLES.td} colSpan={3}>
-                <span style={{ color: '#4b5563' }}>No mappings defined yet.</span>
-              </td>
-            </tr>
-          )}
-          {Object.entries(mappings).map(([from, to]) => (
-            <tr key={from}>
-              <td style={STYLES.td}>
-                <input
-                  style={STYLES.input}
-                  defaultValue={from}
-                  onBlur={e => handleEdit(from, 'key', e.target.value)}
-                />
-              </td>
-              <td style={STYLES.td}>
-                <input
-                  style={STYLES.input}
-                  defaultValue={to}
-                  onBlur={e => handleEdit(from, 'value', e.target.value)}
-                />
-              </td>
-              <td style={STYLES.td}>
-                <button style={STYLES.removeBtn} onClick={() => handleRemove(from)}>×</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div style={{ marginBottom: '16px', minHeight: '40px' }}>
+        {categories.length === 0 && (
+          <p style={{ fontSize: '13px', color: '#4b5563' }}>No categories defined yet.</p>
+        )}
+        {categories.map(cat => (
+          <span key={cat} style={{
+            ...STYLES.pill,
+            backgroundColor: '#1e1b4b', borderColor: '#3730a3', color: '#a78bfa'
+          }}>
+            {cat}
+            <button
+              style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '14px', padding: '0' }}
+              onClick={() => handleRemove(cat)}
+            >×</button>
+          </span>
+        ))}
+      </div>
 
-      <div style={STYLES.addRow}>
+      <div style={{ display: 'flex', gap: '8px' }}>
         <input
-          style={STYLES.addInput}
-          placeholder="Raw site name (from CSV)..."
-          value={newFrom}
-          onChange={e => setNewFrom(e.target.value)}
-        />
-        <input
-          style={STYLES.addInput}
-          placeholder="Normalized name..."
-          value={newTo}
-          onChange={e => setNewTo(e.target.value)}
+          style={{ ...STYLES.input, flex: 1 }}
+          placeholder="New category name..."
+          value={newCategory}
+          onChange={e => setNewCategory(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
         <button style={STYLES.addBtn} onClick={handleAdd}>+ Add</button>
       </div>
 
-      <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save Mappings</button>
-      {saved && <div style={STYLES.savedMsg}>✓ Mappings saved successfully.</div>}
-    </div>
-  );
-}
-
-// =============================================
-// EMAIL NORMALIZATION TAB
-// =============================================
-function EmailNormalizationTab({ config, onConfigUpdate }) {
-  const [saved, setSaved] = useState(false);
-  const emailConfig = config.modulePool?.processing?.emailNormalization?.config || {};
-
-  function handleDomainChange(value) {
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        processing: {
-          ...config.modulePool.processing,
-          emailNormalization: {
-            ...config.modulePool.processing.emailNormalization,
-            config: { ...emailConfig, domainToStrip: value }
-          }
-        }
-      }
-    });
-    setSaved(false);
-  }
-
-  function handleSave() {
-    onConfigUpdate(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  }
-
-  return (
-    <div style={STYLES.section}>
-      <div style={STYLES.sectionTitle}>Email Normalization</div>
-      <p style={STYLES.sectionDesc}>
-        The email domain that gets stripped from user email and last login
-        columns before the audit runs. For example, stripping "@company.co"
-        turns "john.doe@company.co" into "john.doe" for comparison.
-      </p>
-      <div style={STYLES.configRow}>
-        <span style={STYLES.configLabel}>Domain to strip</span>
-        <input
-          style={STYLES.input}
-          defaultValue={emailConfig.domainToStrip || ''}
-          onBlur={e => handleDomainChange(e.target.value)}
-          placeholder="e.g. @company.co"
-        />
-      </div>
-      <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save</button>
-      {saved && <div style={STYLES.savedMsg}>✓ Saved successfully.</div>}
-    </div>
-  );
-}
-
-// =============================================
-// OS FILTER TAB
-// =============================================
-function OsFilterTab({ config, onConfigUpdate }) {
-  const [saved, setSaved] = useState(false);
-  const osConfig = config.modulePool?.processing?.osFilter?.config || {};
-  const categories = osConfig.categories || {};
-
-  function handleCategoryChange(category, value) {
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        processing: {
-          ...config.modulePool.processing,
-          osFilter: {
-            ...config.modulePool.processing.osFilter,
-            config: {
-              ...osConfig,
-              categories: { ...categories, [category]: value }
-            }
-          }
-        }
-      }
-    });
-    setSaved(false);
-  }
-
-  function handleSave() {
-    onConfigUpdate(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  }
-
-  return (
-    <div style={STYLES.section}>
-      <div style={STYLES.sectionTitle}>OS Filter</div>
-      <p style={STYLES.sectionDesc}>
-        Map OS category names to the exact OS name strings that appear in
-        your ManageEngine CSV. Assets matching these values will be
-        segregated into their respective categories in the audit output.
-      </p>
-      {Object.entries(categories).map(([category, osName]) => (
-        <div key={category} style={STYLES.configRow}>
-          <span style={STYLES.configLabel}>{category}</span>
-          <input
-            style={STYLES.input}
-            defaultValue={osName}
-            onBlur={e => handleCategoryChange(category, e.target.value)}
-          />
-        </div>
-      ))}
-      <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save</button>
-      {saved && <div style={STYLES.savedMsg}>✓ Saved successfully.</div>}
-    </div>
-  );
-}
-
-// =============================================
-// STATE FILTER TAB
-// =============================================
-function StateFilterTab({ config, onConfigUpdate }) {
-  const [saved, setSaved] = useState(false);
-  const [newActive, setNewActive] = useState('');
-  const [newFlagged, setNewFlagged] = useState('');
-  const stateConfig = config.modulePool?.processing?.stateFilter?.config || {};
-  const activeStates = stateConfig.activeStates || [];
-  const flaggedStates = stateConfig.flaggedStates || [];
-
-  function updateStateConfig(field, newList) {
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        processing: {
-          ...config.modulePool.processing,
-          stateFilter: {
-            ...config.modulePool.processing.stateFilter,
-            config: { ...stateConfig, [field]: newList }
-          }
-        }
-      }
-    });
-    setSaved(false);
-  }
-
-  function handleSave() {
-    onConfigUpdate(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  }
-
-  return (
-    <div style={STYLES.section}>
-      <div style={STYLES.sectionTitle}>State Filter</div>
-      <p style={STYLES.sectionDesc}>
-        Define which asset states are considered active (included in audit)
-        and which are flagged (segregated separately in the output).
-      </p>
-
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
-          Active States
-        </div>
-        <p style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
-          Assets with these states will be included in the audit.
-        </p>
-        <div style={STYLES.tagContainer}>
-          {activeStates.map(state => (
-            <div key={state} style={STYLES.tag}>
-              <span>{state}</span>
-              <button
-                style={STYLES.tagRemove}
-                onClick={() => updateStateConfig('activeStates', activeStates.filter(s => s !== state))}
-              >×</button>
-            </div>
-          ))}
-        </div>
-        <div style={STYLES.addRow}>
-          <input
-            style={STYLES.addInput}
-            placeholder="Add active state..."
-            value={newActive}
-            onChange={e => setNewActive(e.target.value)}
-          />
-          <button style={STYLES.addBtn} onClick={() => {
-            if (newActive.trim()) {
-              updateStateConfig('activeStates', [...activeStates, newActive.trim()]);
-              setNewActive('');
-            }
-          }}>+ Add</button>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
-          Flagged States
-        </div>
-        <p style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
-          Assets with these states will be segregated into the Flagged output tab.
-        </p>
-        <div style={STYLES.tagContainer}>
-          {flaggedStates.map(state => (
-            <div key={state} style={STYLES.tag}>
-              <span>{state}</span>
-              <button
-                style={STYLES.tagRemove}
-                onClick={() => updateStateConfig('flaggedStates', flaggedStates.filter(s => s !== state))}
-              >×</button>
-            </div>
-          ))}
-        </div>
-        <div style={STYLES.addRow}>
-          <input
-            style={STYLES.addInput}
-            placeholder="Add flagged state..."
-            value={newFlagged}
-            onChange={e => setNewFlagged(e.target.value)}
-          />
-          <button style={STYLES.addBtn} onClick={() => {
-            if (newFlagged.trim()) {
-              updateStateConfig('flaggedStates', [...flaggedStates, newFlagged.trim()]);
-              setNewFlagged('');
-            }
-          }}>+ Add</button>
-        </div>
-      </div>
-
-      <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save</button>
-      {saved && <div style={STYLES.savedMsg}>✓ Saved successfully.</div>}
+      <button style={STYLES.saveBtn} onClick={handleSave}>✓ Save Categories</button>
+      {saved && <div style={STYLES.savedMsg}>✓ Categories saved.</div>}
     </div>
   );
 }
@@ -463,25 +531,18 @@ function ResetTab() {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Reset Configuration</div>
       <p style={STYLES.sectionDesc}>
-        This will clear all saved settings including asset configurations,
-        module settings, whitelists, blacklists, and site mappings.
-        Run history will also be cleared. This action cannot be undone.
+        Clears all saved settings — asset types, audit rules, processing steps,
+        categories, and run history. Cannot be undone.
       </p>
       <button style={STYLES.dangerBtn} onClick={() => setShowConfirm(true)}>
         ⚠ Reset All Settings
       </button>
       {showConfirm && (
         <div style={STYLES.confirmBox}>
-          <p style={STYLES.confirmText}>
-            Are you sure? This will delete all your configurations and cannot be undone.
-          </p>
+          <p style={STYLES.confirmText}>Are you sure? This cannot be undone.</p>
           <div style={STYLES.confirmBtns}>
-            <button style={STYLES.confirmYes} onClick={handleReset}>
-              Yes, reset everything
-            </button>
-            <button style={STYLES.confirmNo} onClick={() => setShowConfirm(false)}>
-              Cancel
-            </button>
+            <button style={STYLES.confirmYes} onClick={handleReset}>Yes, reset everything</button>
+            <button style={STYLES.confirmNo} onClick={() => setShowConfirm(false)}>Cancel</button>
           </div>
         </div>
       )}
@@ -492,14 +553,12 @@ function ResetTab() {
 // =============================================
 // MAIN COMPONENT
 // =============================================
-export default function Settings({ config, onConfigUpdate }) {
-  const [activeTab, setActiveTab] = useState('site');
+export default function Settings({ config, onConfigUpdate, detectedHeaders }) {
+  const [activeTab, setActiveTab] = useState('categories');
 
   const tabs = [
-    { id: 'site', label: '📍 Site Mappings' },
-    { id: 'email', label: '✉ Email' },
-    { id: 'os', label: '💻 OS Filter' },
-    { id: 'state', label: '🔄 State Filter' },
+    { id: 'categories', label: '🏷 Categories' },
+    { id: 'processing', label: '🔧 Processing' },
     { id: 'reset', label: '⚠ Reset' }
   ];
 
@@ -507,7 +566,7 @@ export default function Settings({ config, onConfigUpdate }) {
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Settings</h2>
       <p style={STYLES.subtitle}>
-        Configure processing modules and manage app settings.
+        Manage audit categories and configure data processing steps.
       </p>
 
       <div style={STYLES.tabs}>
@@ -522,17 +581,15 @@ export default function Settings({ config, onConfigUpdate }) {
         ))}
       </div>
 
-      {activeTab === 'site' && (
-        <SiteNormalizationTab config={config} onConfigUpdate={onConfigUpdate} />
+      {activeTab === 'categories' && (
+        <CategoriesTab config={config} onConfigUpdate={onConfigUpdate} />
       )}
-      {activeTab === 'email' && (
-        <EmailNormalizationTab config={config} onConfigUpdate={onConfigUpdate} />
-      )}
-      {activeTab === 'os' && (
-        <OsFilterTab config={config} onConfigUpdate={onConfigUpdate} />
-      )}
-      {activeTab === 'state' && (
-        <StateFilterTab config={config} onConfigUpdate={onConfigUpdate} />
+      {activeTab === 'processing' && (
+        <ProcessingTab
+          config={config}
+          onConfigUpdate={onConfigUpdate}
+          detectedHeaders={detectedHeaders}
+        />
       )}
       {activeTab === 'reset' && <ResetTab />}
     </div>

@@ -17,134 +17,129 @@ const STYLES = {
     backgroundColor: '#1a1d27', border: '1px solid #2a2d3e',
     borderRadius: '12px', padding: '20px'
   },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
   cardTitle: { fontSize: '15px', fontWeight: '600', color: '#ffffff' },
   cardDesc: { fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' },
   badge: { fontSize: '11px', fontWeight: '500', padding: '3px 10px', borderRadius: '20px', border: '1px solid' },
   badgeActive: { color: '#34d399', borderColor: '#064e3b', backgroundColor: '#0f1f17' },
   badgeInactive: { color: '#9ca3af', borderColor: '#374151', backgroundColor: '#1f2937' },
-  badgeAudit: { color: '#a78bfa', borderColor: '#3730a3', backgroundColor: '#1e1b4b' },
   toggle: {
-    width: '100%', padding: '9px', borderRadius: '8px',
-    border: '1px solid', fontSize: '13px', fontWeight: '500',
-    cursor: 'pointer', transition: 'all 0.15s ease', marginBottom: '8px'
+    width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid',
+    fontSize: '13px', fontWeight: '500', cursor: 'pointer', marginBottom: '12px'
   },
   toggleActive: { backgroundColor: '#1f1f35', borderColor: '#7f1d1d', color: '#fca5a5' },
   toggleInactive: { backgroundColor: '#0f1f17', borderColor: '#064e3b', color: '#34d399' },
-  moduleChips: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' },
   chip: {
     fontSize: '11px', padding: '3px 8px', borderRadius: '4px',
     border: '1px solid #2a2d3e', color: '#9ca3af', backgroundColor: '#0f1117',
-    cursor: 'pointer', transition: 'all 0.15s ease'
+    cursor: 'pointer', display: 'inline-block', margin: '3px'
   },
   chipActive: { borderColor: '#6366f1', color: '#6366f1', backgroundColor: '#1e1b4b' },
   chipProcessing: { borderColor: '#0c4a6e', color: '#38bdf8', backgroundColor: '#0c1a2e' },
-  configPanel: {
-    backgroundColor: '#1a1d27', border: '1px solid #2a2d3e',
-    borderRadius: '12px', padding: '24px', marginBottom: '16px'
-  },
-  configTitle: { fontSize: '15px', fontWeight: '600', color: '#ffffff', marginBottom: '4px' },
-  configDesc: { fontSize: '12px', color: '#6b7280', marginBottom: '16px' },
-  configRow: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' },
-  configLabel: { fontSize: '12px', color: '#9ca3af', width: '140px', flexShrink: 0 },
-  input: {
-    flex: 1, padding: '8px 12px', backgroundColor: '#0f1117',
-    border: '1px solid #2a2d3e', borderRadius: '6px',
-    color: '#e0e0e0', fontSize: '13px'
-  },
-  select: {
-    flex: 1, padding: '8px 12px', backgroundColor: '#0f1117',
-    border: '1px solid #2a2d3e', borderRadius: '6px',
-    color: '#e0e0e0', fontSize: '13px', cursor: 'pointer'
-  },
-  operatorSelect: {
-    width: '130px', padding: '8px 12px', backgroundColor: '#0f1117',
-    border: '1px solid #2a2d3e', borderRadius: '6px',
-    color: '#6366f1', fontSize: '13px', cursor: 'pointer', flexShrink: 0
-  },
   saveBtn: {
     padding: '10px 20px', backgroundColor: '#6366f1', color: '#ffffff',
     border: 'none', borderRadius: '8px', fontSize: '13px',
-    fontWeight: '500', cursor: 'pointer', marginTop: '12px'
-  },
-  addBtn: {
-    padding: '10px 20px', backgroundColor: '#1a1d27', color: '#6366f1',
-    border: '1px solid #6366f1', borderRadius: '8px', fontSize: '13px',
     fontWeight: '500', cursor: 'pointer', marginTop: '16px'
   },
-  dangerBtn: {
+  addBtnSmall: {
+    padding: '6px 12px', backgroundColor: '#6366f1', color: '#ffffff',
+    border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
+  },
+  cancelBtnSmall: {
+    padding: '6px 12px', backgroundColor: '#374151', color: '#e0e0e0',
+    border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
+  },
+  dangerBtnSmall: {
     padding: '6px 12px', backgroundColor: '#1f1315', color: '#fca5a5',
-    border: '1px solid #7f1d1d', borderRadius: '6px', fontSize: '12px',
-    cursor: 'pointer'
+    border: '1px solid #7f1d1d', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
+  },
+  editInput: {
+    padding: '7px 10px', backgroundColor: '#0f1117', border: '1px solid #6366f1',
+    borderRadius: '6px', color: '#e0e0e0', fontSize: '13px',
+    width: '100%', marginBottom: '8px'
+  },
+  input: {
+    padding: '8px 12px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '6px', color: '#e0e0e0', fontSize: '13px', width: '100%'
+  },
+  select: {
+    padding: '8px 12px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '6px', color: '#e0e0e0', fontSize: '13px',
+    cursor: 'pointer', width: '100%'
   },
   savedMsg: { fontSize: '12px', color: '#34d399', marginTop: '8px' },
-  tagContainer: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' },
+  tagContainer: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' },
   tag: {
     display: 'flex', alignItems: 'center', gap: '4px',
     backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
-    borderRadius: '6px', padding: '3px 8px', fontSize: '12px', color: '#e0e0e0'
+    borderRadius: '6px', padding: '3px 8px', fontSize: '11px', color: '#e0e0e0'
   },
   tagRemove: {
     background: 'none', border: 'none', color: '#6b7280',
     cursor: 'pointer', fontSize: '14px', lineHeight: '1', padding: '0'
   },
-  addRow: { display: 'flex', gap: '8px', marginTop: '8px' },
+  addRow: { display: 'flex', gap: '8px', marginTop: '6px' },
   addInput: {
-    flex: 1, padding: '8px 12px', backgroundColor: '#0f1117',
+    flex: 1, padding: '7px 10px', backgroundColor: '#0f1117',
     border: '1px solid #2a2d3e', borderRadius: '6px',
-    color: '#e0e0e0', fontSize: '13px'
+    color: '#e0e0e0', fontSize: '12px'
   },
-  addBtnSmall: {
-    padding: '8px 14px', backgroundColor: '#6366f1', color: '#ffffff',
-    border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer'
+  ruleCard: {
+    backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '8px', padding: '16px', marginBottom: '10px'
   },
-  editInput: {
-    padding: '6px 10px', backgroundColor: '#0f1117',
-    border: '1px solid #6366f1', borderRadius: '6px',
-    color: '#e0e0e0', fontSize: '13px', width: '100%', marginBottom: '8px'
-  },
+  ruleHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+  ruleTitle: { fontSize: '13px', fontWeight: '500', color: '#ffffff' },
+  row: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' },
+  label: { fontSize: '12px', color: '#9ca3af', width: '110px', flexShrink: 0 },
   infoBox: {
     backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
     borderRadius: '8px', padding: '12px', marginBottom: '16px',
     fontSize: '12px', color: '#6b7280', lineHeight: '1.6'
+  },
+  operatorSelect: {
+    padding: '8px 10px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+    borderRadius: '6px', color: '#6366f1', fontSize: '12px',
+    cursor: 'pointer', width: '130px', flexShrink: 0
   }
 };
 
-const OPERATORS = ['equals', 'is not', 'contains', 'starts with', 'ends with'];
+const OPERATORS = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with', 'is empty', 'is not empty', 'is not found'];
+const COMPARE_TYPES = [
+  { value: 'value', label: 'Static value' },
+  { value: 'lookup', label: 'Lookup in source' }
+];
 
 // =============================================
-// HELPER: Discoverable text input with dropdown
+// DISCOVERABLE INPUT
 // =============================================
-function DiscoverableInput({ value, onChange, headers, placeholder }) {
-  const [showDropdown, setShowDropdown] = useState(false);
-  const filtered = headers.filter(h =>
+function DiscoverableInput({ value, onChange, headers, placeholder, style }) {
+  const [show, setShow] = useState(false);
+  const filtered = (headers || []).filter(h =>
     h.toLowerCase().includes((value || '').toLowerCase()) && h !== value
   );
 
   return (
     <div style={{ position: 'relative', flex: 1 }}>
       <input
-        style={STYLES.input}
+        style={{ ...STYLES.input, ...style }}
         value={value || ''}
-        onChange={e => { onChange(e.target.value); setShowDropdown(true); }}
-        onFocus={() => setShowDropdown(true)}
-        onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-        placeholder={placeholder || 'Column name...'}
+        onChange={e => { onChange(e.target.value); setShow(true); }}
+        onFocus={() => setShow(true)}
+        onBlur={() => setTimeout(() => setShow(false), 150)}
+        placeholder={placeholder}
       />
-      {showDropdown && filtered.length > 0 && (
+      {show && filtered.length > 0 && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0,
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
           backgroundColor: '#1a1d27', border: '1px solid #2a2d3e',
-          borderRadius: '6px', zIndex: 100, maxHeight: '160px', overflowY: 'auto'
+          borderRadius: '6px', maxHeight: '150px', overflowY: 'auto'
         }}>
           {filtered.map(h => (
             <div
               key={h}
-              style={{
-                padding: '8px 12px', cursor: 'pointer', fontSize: '12px',
-                color: '#e0e0e0', borderBottom: '1px solid #2a2d3e'
-              }}
-              onMouseDown={() => { onChange(h); setShowDropdown(false); }}
+              style={{ padding: '7px 12px', cursor: 'pointer', fontSize: '12px', color: '#e0e0e0', borderBottom: '1px solid #2a2d3e' }}
+              onMouseDown={() => { onChange(h); setShow(false); }}
             >
               {h}
             </div>
@@ -171,27 +166,20 @@ function TagListInput({ label, description, items, onChange }) {
 
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>{label}</div>
-      <div style={{ fontSize: '10px', color: '#4b5563', marginBottom: '6px' }}>{description}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+      {label && <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>{label}</div>}
+      {description && <div style={{ fontSize: '10px', color: '#4b5563', marginBottom: '6px' }}>{description}</div>}
+      <div style={STYLES.tagContainer}>
         {(items || []).length === 0 && <span style={{ fontSize: '11px', color: '#4b5563' }}>None added.</span>}
         {(items || []).map(item => (
-          <div key={item} style={{
-            display: 'flex', alignItems: 'center', gap: '3px',
-            backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
-            borderRadius: '4px', padding: '2px 6px', fontSize: '11px', color: '#e0e0e0'
-          }}>
+          <div key={item} style={STYLES.tag}>
             <span>{item}</span>
-            <button
-              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '12px', padding: '0' }}
-              onClick={() => onChange(items.filter(i => i !== item))}
-            >×</button>
+            <button style={STYLES.tagRemove} onClick={() => onChange(items.filter(i => i !== item))}>×</button>
           </div>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: '6px' }}>
+      <div style={STYLES.addRow}>
         <input
-          style={{ flex: 1, padding: '6px 10px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', color: '#e0e0e0', fontSize: '11px' }}
+          style={STYLES.addInput}
           value={inputVal}
           onChange={e => setInputVal(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
@@ -204,9 +192,182 @@ function TagListInput({ label, description, items, onChange }) {
 }
 
 // =============================================
+// RULE BUILDER
+// =============================================
+function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories, allSources }) {
+  const allHeaders = detectedHeaders
+    ? Object.entries(detectedHeaders).flatMap(([sourceId, headers]) =>
+        (headers || []).map(h => ({ label: `${sourceId}: ${h}`, value: h, sourceId }))
+      )
+    : [];
+
+  const sourceOptions = detectedHeaders ? Object.keys(detectedHeaders) : [];
+
+  function update(changes) {
+    onUpdate({ ...rule, ...changes });
+  }
+
+  const severityColor = rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280';
+
+  return (
+    <div style={STYLES.ruleCard}>
+      <div style={STYLES.ruleHeader}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={STYLES.ruleTitle}>{rule.name || 'New Rule'}</span>
+          <span style={{
+            fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+            backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
+            color: severityColor
+          }}>
+            Priority {rule.severity || 5}
+          </span>
+          {rule.category && (
+            <span style={{
+              fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+              backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
+            }}>
+              {rule.category}
+            </span>
+          )}
+        </div>
+        <button
+          style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }}
+          onClick={onRemove}
+        >×</button>
+      </div>
+
+      {/* Rule name */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Rule name</span>
+        <input style={STYLES.input} value={rule.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. Check terminated users" />
+      </div>
+
+      {/* Flag reason */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Flag reason</span>
+        <input style={STYLES.input} value={rule.flagReason || ''} onChange={e => update({ flagReason: e.target.value })} placeholder="Text shown in Audit Reason column..." />
+      </div>
+
+      {/* Category */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Category</span>
+        <select style={STYLES.select} value={rule.category || ''} onChange={e => update({ category: e.target.value })}>
+          <option value="">— Select category —</option>
+          {(categories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+        </select>
+      </div>
+
+      {/* Severity */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Priority (1-10)</span>
+        <input
+          style={{ ...STYLES.input, width: '80px', flex: 'none' }}
+          type="number" min="1" max="10"
+          value={rule.severity || 5}
+          onChange={e => update({ severity: parseInt(e.target.value) || 5 })}
+        />
+        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority</span>
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '12px 0' }} />
+
+      {/* Source column */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Source column</span>
+        <select style={{ ...STYLES.select, width: '120px', flex: 'none' }}
+          value={rule.sourceId || ''}
+          onChange={e => update({ sourceId: e.target.value })}
+        >
+          <option value="">Source...</option>
+          {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <DiscoverableInput
+          value={rule.sourceColumn || ''}
+          onChange={val => update({ sourceColumn: val })}
+          headers={rule.sourceId && detectedHeaders ? detectedHeaders[rule.sourceId] : []}
+          placeholder="Header name..."
+        />
+      </div>
+
+      {/* Operator */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Operator</span>
+        <select style={STYLES.operatorSelect} value={rule.operator || 'equals'} onChange={e => update({ operator: e.target.value })}>
+          {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+        </select>
+      </div>
+
+      {/* Compare type */}
+      <div style={STYLES.row}>
+        <span style={STYLES.label}>Compare to</span>
+        <select style={{ ...STYLES.select, width: '140px', flex: 'none' }}
+          value={rule.compareType || 'value'}
+          onChange={e => update({ compareType: e.target.value })}
+        >
+          {COMPARE_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+        </select>
+
+        {(rule.compareType === 'value' || !rule.compareType) && (
+          <input
+            style={STYLES.input}
+            value={rule.compareValue || ''}
+            onChange={e => update({ compareValue: e.target.value })}
+            placeholder="Value to compare against..."
+          />
+        )}
+
+        {rule.compareType === 'lookup' && (
+          <div style={{ flex: 1, display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <select style={{ ...STYLES.select, flex: 1 }}
+              value={rule.lookupSourceId || ''}
+              onChange={e => update({ lookupSourceId: e.target.value })}
+            >
+              <option value="">Lookup source...</option>
+              {sourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {rule.compareType === 'lookup' && (
+        <>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Match key col</span>
+            <DiscoverableInput
+              value={rule.matchKeyColumn || ''}
+              onChange={val => update({ matchKeyColumn: val })}
+              headers={rule.sourceId && detectedHeaders ? detectedHeaders[rule.sourceId] : []}
+              placeholder="Column in source to match by..."
+            />
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Lookup key col</span>
+            <DiscoverableInput
+              value={rule.lookupKeyColumn || ''}
+              onChange={val => update({ lookupKeyColumn: val })}
+              headers={rule.lookupSourceId && detectedHeaders ? detectedHeaders[rule.lookupSourceId] : []}
+              placeholder="Column in lookup source to match..."
+            />
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Lookup value col</span>
+            <DiscoverableInput
+              value={rule.lookupValueColumn || ''}
+              onChange={val => update({ lookupValueColumn: val })}
+              headers={rule.lookupSourceId && detectedHeaders ? detectedHeaders[rule.lookupSourceId] : []}
+              placeholder="Column to get value from..."
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============================================
 // ASSET TYPES TAB
 // =============================================
-function AssetTypesTab({ config, onConfigUpdate }) {
+function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -216,9 +377,8 @@ function AssetTypesTab({ config, onConfigUpdate }) {
   const [newDesc, setNewDesc] = useState('');
 
   const assetTypes = config.assetTypes || {};
-  const modulePool = config.modulePool || {};
-  const allProcessingIds = Object.keys(modulePool.processing || {});
-  const allAuditIds = Object.keys(modulePool.audit || {});
+  const processingSteps = config.processingSteps || [];
+  const auditRules = config.auditRules || [];
 
   function handleToggleAsset(assetId) {
     onConfigUpdate({
@@ -230,26 +390,34 @@ function AssetTypesTab({ config, onConfigUpdate }) {
     });
   }
 
-  function handleToggleModule(assetId, moduleId, type) {
+  function handleToggleStep(assetId, stepId) {
     const asset = assetTypes[assetId];
-    const field = type === 'processing' ? 'selectedProcessingModules' : 'selectedAuditModules';
-    const current = asset[field] || [];
-    const updated = current.includes(moduleId)
-      ? current.filter(m => m !== moduleId)
-      : [...current, moduleId];
+    const current = asset.selectedProcessingSteps || [];
+    const updated = current.includes(stepId)
+      ? current.filter(s => s !== stepId)
+      : [...current, stepId];
     onConfigUpdate({
       ...config,
-      assetTypes: { ...assetTypes, [assetId]: { ...asset, [field]: updated } }
+      assetTypes: { ...assetTypes, [assetId]: { ...asset, selectedProcessingSteps: updated } }
+    });
+  }
+
+  function handleToggleRule(assetId, ruleId) {
+    const asset = assetTypes[assetId];
+    const current = asset.selectedRules || [];
+    const updated = current.includes(ruleId)
+      ? current.filter(r => r !== ruleId)
+      : [...current, ruleId];
+    onConfigUpdate({
+      ...config,
+      assetTypes: { ...assetTypes, [assetId]: { ...asset, selectedRules: updated } }
     });
   }
 
   function handleListChange(assetId, listName, newItems) {
     onConfigUpdate({
       ...config,
-      assetTypes: {
-        ...assetTypes,
-        [assetId]: { ...assetTypes[assetId], [listName]: newItems }
-      }
+      assetTypes: { ...assetTypes, [assetId]: { ...assetTypes[assetId], [listName]: newItems } }
     });
   }
 
@@ -279,28 +447,19 @@ function AssetTypesTab({ config, onConfigUpdate }) {
 
   function handleAddAsset() {
     if (!newName.trim()) return;
-    const newId = newName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const newId = `asset_${Date.now()}`;
     onConfigUpdate({
       ...config,
       assetTypes: {
         ...assetTypes,
         [newId]: {
-          id: newId,
-          name: newName.trim(),
-          description: newDesc.trim(),
-          enabled: true,
-          selectedProcessingModules: [],
-          selectedAuditModules: [],
-          availableProcessingModules: allProcessingIds,
-          availableAuditModules: allAuditIds,
-          whitelist: [],
-          blacklist: []
+          id: newId, name: newName.trim(), description: newDesc.trim(),
+          enabled: true, selectedProcessingSteps: [], selectedRules: [],
+          whitelist: [], blacklist: []
         }
       }
     });
-    setNewName('');
-    setNewDesc('');
-    setShowAddForm(false);
+    setNewName(''); setNewDesc(''); setShowAddForm(false);
   }
 
   function handleSave() {
@@ -311,27 +470,25 @@ function AssetTypesTab({ config, onConfigUpdate }) {
 
   return (
     <div>
+      {Object.keys(assetTypes).length === 0 && (
+        <div style={STYLES.infoBox}>
+          💡 Create your first asset type to get started. An asset type represents
+          a category of assets you want to audit (e.g. Workstations, Monitors, Headsets).
+          Each asset type selects which processing steps and audit rules apply to it.
+        </div>
+      )}
+
       <div style={STYLES.grid}>
         {Object.entries(assetTypes).map(([assetId, asset]) => (
           <div key={assetId} style={STYLES.card}>
             <div style={STYLES.cardHeader}>
               {editingId === assetId ? (
-                <div style={{ flex: 1, marginRight: '8px' }}>
-                  <input
-                    style={STYLES.editInput}
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    placeholder="Asset type name..."
-                  />
-                  <input
-                    style={STYLES.editInput}
-                    value={editDesc}
-                    onChange={e => setEditDesc(e.target.value)}
-                    placeholder="Description..."
-                  />
+                <div style={{ flex: 1 }}>
+                  <input style={STYLES.editInput} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Asset type name..." />
+                  <input style={STYLES.editInput} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Description..." />
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button style={STYLES.addBtnSmall} onClick={() => handleSaveEdit(assetId)}>✓ Save</button>
-                    <button style={{ ...STYLES.addBtnSmall, backgroundColor: '#374151' }} onClick={() => setEditingId(null)}>Cancel</button>
+                    <button style={STYLES.cancelBtnSmall} onClick={() => setEditingId(null)}>Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -341,16 +498,8 @@ function AssetTypesTab({ config, onConfigUpdate }) {
                     <span style={{ ...STYLES.badge, ...(asset.enabled ? STYLES.badgeActive : STYLES.badgeInactive) }}>
                       {asset.enabled ? 'Active' : 'Inactive'}
                     </span>
-                    <button
-                      style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px' }}
-                      onClick={() => handleStartEdit(assetId)}
-                      title="Edit"
-                    >✏</button>
-                    <button
-                      style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }}
-                      onClick={() => handleDelete(assetId)}
-                      title="Delete"
-                    >×</button>
+                    <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px' }} onClick={() => handleStartEdit(assetId)}>✏</button>
+                    <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={() => handleDelete(assetId)}>×</button>
                   </div>
                 </>
               )}
@@ -358,7 +507,7 @@ function AssetTypesTab({ config, onConfigUpdate }) {
 
             {editingId !== assetId && (
               <>
-                <p style={STYLES.cardDesc}>{asset.description}</p>
+                <p style={STYLES.cardDesc}>{asset.description || 'No description.'}</p>
                 <button
                   style={{ ...STYLES.toggle, ...(asset.enabled ? STYLES.toggleActive : STYLES.toggleInactive) }}
                   onClick={() => handleToggleAsset(assetId)}
@@ -366,53 +515,67 @@ function AssetTypesTab({ config, onConfigUpdate }) {
                   {asset.enabled ? '⏸ Disable' : '▶ Enable'}
                 </button>
 
-                <div style={{ fontSize: '11px', color: '#38bdf8', marginTop: '12px', marginBottom: '6px' }}>
-                  🔧 Processing Modules
+                {/* Processing Steps */}
+                <div style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '6px', fontWeight: '500' }}>
+                  🔧 Processing Steps
                 </div>
-                <div style={STYLES.moduleChips}>
-                  {allProcessingIds.map(moduleId => {
-                    const isSelected = (asset.selectedProcessingModules || []).includes(moduleId);
-                    return (
-                      <span
-                        key={moduleId}
-                        style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipProcessing : {}) }}
-                        onClick={() => handleToggleModule(assetId, moduleId, 'processing')}
-                      >
-                        {modulePool.processing[moduleId]?.name || moduleId}
-                      </span>
-                    );
-                  })}
-                </div>
+                {processingSteps.length === 0 ? (
+                  <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
+                    No processing steps defined yet. Add them in Settings → Processing.
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '10px' }}>
+                    {processingSteps.map(step => {
+                      const isSelected = (asset.selectedProcessingSteps || []).includes(step.id);
+                      return (
+                        <span
+                          key={step.id}
+                          style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipProcessing : {}) }}
+                          onClick={() => handleToggleStep(assetId, step.id)}
+                        >
+                          {step.name || step.id}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
-                <div style={{ fontSize: '11px', color: '#a78bfa', marginTop: '12px', marginBottom: '6px' }}>
-                  🔍 Audit Modules
+                {/* Audit Rules */}
+                <div style={{ fontSize: '11px', color: '#a78bfa', marginBottom: '6px', fontWeight: '500' }}>
+                  🔍 Audit Rules
                 </div>
-                <div style={STYLES.moduleChips}>
-                  {allAuditIds.map(moduleId => {
-                    const isSelected = (asset.selectedAuditModules || []).includes(moduleId);
-                    return (
-                      <span
-                        key={moduleId}
-                        style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipActive : {}) }}
-                        onClick={() => handleToggleModule(assetId, moduleId, 'audit')}
-                      >
-                        {modulePool.audit[moduleId]?.name || moduleId}
-                      </span>
-                    );
-                  })}
-                </div>
+                {auditRules.length === 0 ? (
+                  <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
+                    No audit rules defined yet. Add them in the Audit Rules tab.
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '10px' }}>
+                    {auditRules.map(rule => {
+                      const isSelected = (asset.selectedRules || []).includes(rule.id);
+                      return (
+                        <span
+                          key={rule.id}
+                          style={{ ...STYLES.chip, ...(isSelected ? STYLES.chipActive : {}) }}
+                          onClick={() => handleToggleRule(assetId, rule.id)}
+                        >
+                          {rule.name || rule.id}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
-                <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '16px 0' }} />
+                <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '12px 0' }} />
 
                 <TagListInput
                   label="✓ Whitelist (Serial Numbers)"
-                  description="Always marked clean — skip all audit checks"
+                  description="Always marked clean"
                   items={asset.whitelist || []}
                   onChange={items => handleListChange(assetId, 'whitelist', items)}
                 />
                 <TagListInput
                   label="✕ Blacklist (Serial Numbers)"
-                  description="Suppressed from audit — flagged separately"
+                  description="Suppressed from audit"
                   items={asset.blacklist || []}
                   onChange={items => handleListChange(assetId, 'blacklist', items)}
                 />
@@ -421,39 +584,19 @@ function AssetTypesTab({ config, onConfigUpdate }) {
           </div>
         ))}
 
-        {/* Add New Asset Type Card */}
         {showAddForm ? (
           <div style={STYLES.card}>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>
-              New Asset Type
-            </div>
-            <input
-              style={STYLES.editInput}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="Asset type name (e.g. Laptops)..."
-            />
-            <input
-              style={STYLES.editInput}
-              value={newDesc}
-              onChange={e => setNewDesc(e.target.value)}
-              placeholder="Description..."
-            />
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>New Asset Type</div>
+            <input style={STYLES.editInput} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAsset()} placeholder="Asset type name..." autoFocus />
+            <input style={STYLES.editInput} value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description..." />
             <div style={{ display: 'flex', gap: '6px' }}>
               <button style={STYLES.addBtnSmall} onClick={handleAddAsset}>✓ Create</button>
-              <button
-                style={{ ...STYLES.addBtnSmall, backgroundColor: '#374151' }}
-                onClick={() => { setShowAddForm(false); setNewName(''); setNewDesc(''); }}
-              >Cancel</button>
+              <button style={STYLES.cancelBtnSmall} onClick={() => { setShowAddForm(false); setNewName(''); setNewDesc(''); }}>Cancel</button>
             </div>
           </div>
         ) : (
           <div
-            style={{
-              ...STYLES.card, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', cursor: 'pointer', minHeight: '120px',
-              border: '2px dashed #2a2d3e', backgroundColor: 'transparent'
-            }}
+            style={{ ...STYLES.card, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', minHeight: '120px', border: '2px dashed #2a2d3e', backgroundColor: 'transparent' }}
             onClick={() => setShowAddForm(true)}
           >
             <div style={{ textAlign: 'center', color: '#6b7280' }}>
@@ -464,208 +607,100 @@ function AssetTypesTab({ config, onConfigUpdate }) {
         )}
       </div>
 
-      <button style={{ ...STYLES.saveBtn, marginTop: '24px' }} onClick={handleSave}>
-        ✓ Save Asset Configuration
-      </button>
+      <button style={{ ...STYLES.saveBtn, marginTop: '24px' }} onClick={handleSave}>✓ Save Asset Configuration</button>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
     </div>
   );
 }
 
 // =============================================
-// AUDIT MODULES TAB
+// AUDIT RULES TAB
 // =============================================
-function AuditModulesTab({ config, onConfigUpdate, detectedHeaders }) {
-  const [savedStates, setSavedStates] = useState({});
-  const modules = config.modulePool?.audit || {};
-  const meHeaders = detectedHeaders?.meData || [];
-  const rosterHeaders = detectedHeaders?.rosterData || [];
-  const allHeaders = [...new Set([...meHeaders, ...rosterHeaders])];
+function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
+  const [savedMsg, setSavedMsg] = useState('');
+  const rules = config.auditRules || [];
+  const categories = config.auditCategories || [];
 
-  function handleToggleModule(moduleId) {
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        audit: {
-          ...modules,
-          [moduleId]: { ...modules[moduleId], enabled: !modules[moduleId].enabled }
-        }
-      }
-    });
+  function handleAddRule() {
+    const newRule = {
+      id: `rule_${Date.now()}`,
+      name: '',
+      flagReason: '',
+      category: '',
+      severity: 5,
+      sourceId: '',
+      sourceColumn: '',
+      operator: 'equals',
+      compareType: 'value',
+      compareValue: '',
+      lookupSourceId: '',
+      matchKeyColumn: '',
+      lookupKeyColumn: '',
+      lookupValueColumn: ''
+    };
+    onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
   }
 
-  function handleColumnMappingChange(moduleId, field, value) {
-    const mod = modules[moduleId];
+  function handleUpdateRule(ruleId, updatedRule) {
     onConfigUpdate({
       ...config,
-      modulePool: {
-        ...config.modulePool,
-        audit: {
-          ...modules,
-          [moduleId]: {
-            ...mod,
-            config: {
-              ...mod.config,
-              columnMapping: { ...mod.config.columnMapping, [field]: value }
-            }
-          }
-        }
-      }
+      auditRules: rules.map(r => r.id === ruleId ? updatedRule : r)
     });
-    setSavedStates(s => ({ ...s, [moduleId]: false }));
+    setSavedMsg('');
   }
 
-  function handleOperatorChange(moduleId, field, value) {
-    const mod = modules[moduleId];
-    const operators = mod.config.operators || {};
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        audit: {
-          ...modules,
-          [moduleId]: {
-            ...mod,
-            config: { ...mod.config, operators: { ...operators, [field]: value } }
-          }
-        }
-      }
-    });
+  function handleRemoveRule(ruleId) {
+    onConfigUpdate({ ...config, auditRules: rules.filter(r => r.id !== ruleId) });
   }
 
-  function handleListChange(moduleId, field, newList) {
-    const mod = modules[moduleId];
-    onConfigUpdate({
-      ...config,
-      modulePool: {
-        ...config.modulePool,
-        audit: {
-          ...modules,
-          [moduleId]: { ...mod, config: { ...mod.config, [field]: newList } }
-        }
-      }
-    });
-  }
-
-  function handleSave(moduleId) {
+  function handleSave() {
     onConfigUpdate(config);
-    setSavedStates(s => ({ ...s, [moduleId]: true }));
-    setTimeout(() => setSavedStates(s => ({ ...s, [moduleId]: false })), 3000);
+    setSavedMsg('✓ Saved');
+    setTimeout(() => setSavedMsg(''), 3000);
   }
 
   return (
     <div>
-      {meHeaders.length === 0 && (
-        <div style={STYLES.infoBox}>
-          💡 Run an audit first to detect your CSV column headers. Once detected, column fields below will show autocomplete suggestions from your actual data.
+      <div style={STYLES.infoBox}>
+        💡 Audit rules define what to check during an audit. Each rule compares a column
+        value using an operator against either a static value or a value looked up from
+        another data source. Rules run in priority order (1 = first). Each rule is assigned
+        to a category which becomes a tab in your output report.
+        {categories.length === 0 && (
+          <span style={{ color: '#fca5a5' }}> ⚠ Add categories in Settings → Categories first.</span>
+        )}
+      </div>
+
+      {rules.length === 0 && (
+        <div style={{ ...STYLES.ruleCard, textAlign: 'center', color: '#6b7280', padding: '32px' }}>
+          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔍</div>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No audit rules yet</div>
+          <div style={{ fontSize: '12px' }}>Click "Add Rule" to create your first audit rule.</div>
         </div>
       )}
 
-      {Object.entries(modules).map(([moduleId, mod]) => {
-        const columnMapping = mod.config.columnMapping || {};
-        const operators = mod.config.operators || {};
-        const knownModels = mod.config.knownModels;
+      {rules
+        .sort((a, b) => (a.severity || 5) - (b.severity || 5))
+        .map(rule => (
+          <RuleBuilder
+            key={rule.id}
+            rule={rule}
+            onUpdate={updated => handleUpdateRule(rule.id, updated)}
+            onRemove={() => handleRemoveRule(rule.id)}
+            detectedHeaders={detectedHeaders}
+            categories={categories}
+          />
+        ))}
 
-        return (
-          <div key={moduleId} style={STYLES.configPanel}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-              <div style={STYLES.configTitle}>{mod.name}</div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ ...STYLES.badge, ...STYLES.badgeAudit }}>Audit</span>
-                <span style={{ ...STYLES.badge, ...(mod.enabled ? STYLES.badgeActive : STYLES.badgeInactive) }}>
-                  {mod.enabled ? 'Enabled' : 'Disabled'}
-                </span>
-                <button
-                  style={{ ...STYLES.toggle, ...(mod.enabled ? STYLES.toggleActive : STYLES.toggleInactive), width: 'auto', padding: '4px 12px', marginBottom: 0 }}
-                  onClick={() => handleToggleModule(moduleId)}
-                >
-                  {mod.enabled ? 'Disable' : 'Enable'}
-                </button>
-              </div>
-            </div>
-            <p style={STYLES.configDesc}>{mod.description}</p>
-
-            {/* Column Mappings with operator */}
-            {Object.keys(columnMapping).length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', fontWeight: '500' }}>
-                  Column Mappings
-                </div>
-                <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '10px' }}>
-                  Map each field to a column in your CSV. Start typing to see detected headers.
-                </div>
-                {Object.entries(columnMapping).map(([field, colName]) => (
-                  <div key={field} style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>{field}</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <DiscoverableInput
-                        value={colName}
-                        onChange={val => handleColumnMappingChange(moduleId, field, val)}
-                        headers={meHeaders.length > 0 ? meHeaders : allHeaders}
-                        placeholder={`Column for ${field}...`}
-                      />
-                      <select
-                        style={STYLES.operatorSelect}
-                        value={operators[field] || 'equals'}
-                        onChange={e => handleOperatorChange(moduleId, field, e.target.value)}
-                      >
-                        {OPERATORS.map(op => (
-                          <option key={op} value={op}>{op}</option>
-                        ))}
-                      </select>
-                      <DiscoverableInput
-                        value={operators[`${field}_value`] || ''}
-                        onChange={val => handleOperatorChange(moduleId, `${field}_value`, val)}
-                        headers={rosterHeaders.length > 0 ? rosterHeaders : allHeaders}
-                        placeholder="Compare to..."
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Known Models */}
-            {knownModels !== undefined && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>
-                  Known Models
-                </div>
-                <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
-                  Models in this list will not be flagged as outstanding.
-                </div>
-                <div style={STYLES.tagContainer}>
-                  {(knownModels || []).length === 0 && (
-                    <span style={{ fontSize: '12px', color: '#4b5563' }}>None added yet.</span>
-                  )}
-                  {(knownModels || []).map(model => (
-                    <div key={model} style={STYLES.tag}>
-                      <span>{model}</span>
-                      <button style={STYLES.tagRemove} onClick={() => handleListChange(moduleId, 'knownModels', knownModels.filter(m => m !== model))}>×</button>
-                    </div>
-                  ))}
-                </div>
-                <div style={STYLES.addRow}>
-                  <input
-                    style={STYLES.addInput}
-                    placeholder="Add model name..."
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && e.target.value.trim()) {
-                        handleListChange(moduleId, 'knownModels', [...knownModels, e.target.value.trim()]);
-                        e.target.value = '';
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <button style={STYLES.saveBtn} onClick={() => handleSave(moduleId)}>✓ Save</button>
-            {savedStates[moduleId] && <div style={STYLES.savedMsg}>✓ Saved successfully</div>}
-          </div>
-        );
-      })}
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <button style={STYLES.saveBtn} onClick={handleAddRule}>+ Add Rule</button>
+        {rules.length > 0 && (
+          <button style={{ ...STYLES.saveBtn, backgroundColor: '#374151' }} onClick={handleSave}>
+            ✓ Save Rules
+          </button>
+        )}
+      </div>
+      {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
     </div>
   );
 }
@@ -678,14 +713,14 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
 
   const tabs = [
     { id: 'assets', label: '📦 Asset Types' },
-    { id: 'audit', label: '🔍 Audit Modules' }
+    { id: 'rules', label: '🔍 Audit Rules' }
   ];
 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Module Manager</h2>
       <p style={STYLES.subtitle}>
-        Configure asset types and manage the audit module pool.
+        Define asset types and build audit rules.
       </p>
 
       <div style={STYLES.tabs}>
@@ -701,10 +736,10 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
       </div>
 
       {activeTab === 'assets' && (
-        <AssetTypesTab config={config} onConfigUpdate={onConfigUpdate} />
+        <AssetTypesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />
       )}
-      {activeTab === 'audit' && (
-        <AuditModulesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />
+      {activeTab === 'rules' && (
+        <AuditRulesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />
       )}
     </div>
   );

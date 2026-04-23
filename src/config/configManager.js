@@ -17,10 +17,11 @@ export function loadConfig() {
       return {
         ...defaultConfig,
         ...parsed,
-        processingModules: {
-          ...defaultConfig.processingModules,
-          ...(parsed.processingModules || {})
-        }
+        processingSteps: parsed.processingSteps || [],
+        auditCategories: parsed.auditCategories || [],
+        auditRules: parsed.auditRules || [],
+        assetTypes: parsed.assetTypes || {},
+        runHistory: parsed.runHistory || []
       };
     }
     return defaultConfig;
