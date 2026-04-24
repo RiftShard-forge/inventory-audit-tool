@@ -1,3 +1,6 @@
+// Copyright (c) 2026 RiftShard-forge. All Rights Reserved.
+// Unauthorized copying, distribution, or use is strictly prohibited.
+
 import React, { useState } from 'react';
 import { parseCsv } from '../utils/auditEngine';
 

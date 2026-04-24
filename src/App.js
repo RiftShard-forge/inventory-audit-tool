@@ -1,3 +1,6 @@
+// Copyright (c) 2026 RiftShard-forge. All Rights Reserved.
+// Unauthorized copying, distribution, or use is strictly prohibited.
+
 import React, { useState } from 'react';
 import { loadConfig, saveConfig, loadDetectedHeaders, saveDetectedHeaders } from './config/configManager';
 import DataSources from './pages/DataSources';
@@ -36,11 +39,6 @@ export default function App() {
 
   function handleDataSourcesUpdate(newSources) {
     setDataSources(newSources);
-    // Save just the names to localStorage for persistence
-    const names = Object.keys(newSources).reduce((acc, key) => {
-      acc[key] = { name: newSources[key].name };
-      return acc;
-    }, {});
     handleHeadersUpdate(
       Object.keys(newSources).reduce((acc, key) => {
         acc[key] = newSources[key].headers;

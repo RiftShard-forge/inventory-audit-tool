@@ -1,3 +1,6 @@
+// Copyright (c) 2026 RiftShard-forge. All Rights Reserved.
+// Unauthorized copying, distribution, or use is strictly prohibited.
+
 import React, { useState } from 'react';
 
 const STYLES = {
@@ -614,7 +617,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [newDesc, setNewDesc] = useState('');
 
   const assetTypes = config.assetTypes || {};
-  const processingSteps = config.processingSteps || [];
   const auditRules = config.auditRules || [];
 
   function handleToggleAsset(assetId) {
@@ -624,18 +626,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
         ...assetTypes,
         [assetId]: { ...assetTypes[assetId], enabled: !assetTypes[assetId].enabled }
       }
-    });
-  }
-
-  function handleToggleStep(assetId, stepId) {
-    const asset = assetTypes[assetId];
-    const current = asset.selectedProcessingSteps || [];
-    const updated = current.includes(stepId)
-      ? current.filter(s => s !== stepId)
-      : [...current, stepId];
-    onConfigUpdate({
-      ...config,
-      assetTypes: { ...assetTypes, [assetId]: { ...asset, selectedProcessingSteps: updated } }
     });
   }
 
@@ -843,9 +833,10 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   }
 
   function handleUpdateRule(ruleId, updatedRule) {
+    const updatedRules = rules.map(r => r.id === ruleId ? updatedRule : r);
     onConfigUpdate({
       ...config,
-      auditRules: rules.map(r => r.id === ruleId ? updatedRule : r)
+      auditRules: updatedRules
     });
     setSavedMsg('');
   }

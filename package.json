@@ -17,13 +17,14 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -b deployment -d build",
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+  "start": "react-scripts start",
+  "build": "react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject",
+  "obfuscate": "javascript-obfuscator build/static/js --output build/static/js --compact true --self-defending true --disable-console-output true --string-array true --string-array-encoding rc4 --string-array-threshold 0.75 --identifier-names-generator hexadecimal",
+  "predeploy": "npm run build && npm run obfuscate",
+  "deploy": "gh-pages -d build"
+},
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -43,6 +44,8 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0"
+    "gh-pages": "^6.3.0",
+    "javascript-obfuscator": "^5.4.2",
+    "webpack-obfuscator": "^3.6.1"
   }
 }

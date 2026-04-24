@@ -97,7 +97,6 @@ function applyOperator(sourceValue, operator, compareValue) {
 
 function evaluateCondition(condition, row, allSources) {
   const {
-    sourceId,
     sourceColumn,
     operator,
     compareType,
@@ -266,6 +265,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
         const triggered = evaluateRule(rule, row, processedSources);
         if (triggered) {
           findings.push({ rule, reason: rule.flagReason || rule.name });
+          break; // First match wins — stop evaluating lower priority rules
         }
       } catch (e) {
         console.warn(`Rule "${rule.name}" error:`, e.message);
