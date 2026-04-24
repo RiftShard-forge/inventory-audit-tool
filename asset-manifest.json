@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/inventory-audit-tool/static/css/main.53042d6b.css",
-    "main.js": "/inventory-audit-tool/static/js/main.91967aba.js",
+    "main.js": "/inventory-audit-tool/static/js/main.77e896c8.js",
     "index.html": "/inventory-audit-tool/index.html",
     "main.53042d6b.css.map": "/inventory-audit-tool/static/css/main.53042d6b.css.map",
-    "main.91967aba.js.map": "/inventory-audit-tool/static/js/main.91967aba.js.map"
+    "main.77e896c8.js.map": "/inventory-audit-tool/static/js/main.77e896c8.js.map"
   },
   "entrypoints": [
     "static/css/main.53042d6b.css",
-    "static/js/main.91967aba.js"
+    "static/js/main.77e896c8.js"
   ]
 }
