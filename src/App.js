@@ -112,7 +112,7 @@ export default function App() {
           ))}
         </ul>
         <div className="sidebar-footer">
-          <p>v2.0.0</p>
+          <p>v2.1.0</p>
           {Object.keys(dataSources).length > 0 && (
             <p style={{ color: '#34d399', fontSize: '10px', marginTop: '4px' }}>
               ● {Object.keys(dataSources).length} source{Object.keys(dataSources).length !== 1 ? 's' : ''} loaded
