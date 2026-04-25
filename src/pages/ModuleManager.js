@@ -395,6 +395,22 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first</span>
       </div>
 
+      {/* Suppress on match */}
+      <div style={{ ...STYLES.row, marginBottom: '4px' }}>
+        <span style={STYLES.label}>Suppress on match</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={rule.suppressOnMatch !== false}
+            onChange={e => update({ suppressOnMatch: e.target.checked })}
+            style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1' }}
+          />
+          <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+            If matched, do not evaluate this asset against lower-priority rules
+          </span>
+        </label>
+      </div>
+
       <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '12px 0' }} />
 
       {/* Conditions */}
@@ -827,6 +843,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
     const newRule = {
       id: `rule_${Date.now()}`,
       name: '', flagReason: '', category: '', severity: 5,
+      suppressOnMatch: true,
       conditions: []
     };
     onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
