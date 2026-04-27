@@ -2,6 +2,7 @@
 // Unauthorized copying, distribution, or use is strictly prohibited.
 
 import React, { useState } from 'react';
+import { addToRuleHistory } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '1000px' },
@@ -836,8 +837,15 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [collapsedRules, setCollapsedRules] = useState({});
   const [savedMsg, setSavedMsg] = useState('');
+  const [checkedRules, setCheckedRules] = useState([]);
   const rules = config.auditRules || [];
   const categories = config.auditCategories || [];
+
+  function handleToggleCheck(ruleId) {
+    setCheckedRules(prev =>
+      prev.includes(ruleId) ? prev.filter(id => id !== ruleId) : [...prev, ruleId]
+    );
+  }
 
   function handleAddRule() {
     const newRule = {
@@ -860,11 +868,21 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
 
   function handleRemoveRule(ruleId) {
     onConfigUpdate({ ...config, auditRules: rules.filter(r => r.id !== ruleId) });
+    setCheckedRules(prev => prev.filter(id => id !== ruleId));
   }
 
   function handleSave() {
     onConfigUpdate(config);
     setSavedMsg('✓ Saved');
+    setTimeout(() => setSavedMsg(''), 3000);
+  }
+
+  function handleSaveToLibrary() {
+    const toSave = rules.filter(r => checkedRules.includes(r.id) && r.name);
+    if (toSave.length === 0) return;
+    toSave.forEach(rule => addToRuleHistory(rule));
+    setSavedMsg(`✓ ${toSave.length} rule(s) saved to library`);
+    setCheckedRules([]);
     setTimeout(() => setSavedMsg(''), 3000);
   }
 
@@ -924,7 +942,13 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
                     {(rule.conditions || []).length} condition(s)
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={checkedRules.includes(rule.id)}
+                    onChange={() => handleToggleCheck(rule.id)}
+                    style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+                  />
                   <button
                     style={{
                       background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
@@ -943,17 +967,27 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <button
-                  style={{
-                    position: 'absolute', top: '12px', right: '40px', zIndex: 10,
-                    background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
-                    cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
-                    padding: '3px 8px'
-                  }}
-                  onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: true }))}
-                >
-                  ▲ Collapse
-                </button>
+                <div style={{
+                  position: 'absolute', top: '12px', right: '40px', zIndex: 10,
+                  display: 'flex', gap: '6px', alignItems: 'center'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checkedRules.includes(rule.id)}
+                    onChange={() => handleToggleCheck(rule.id)}
+                    style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+                  />
+                  <button
+                    style={{
+                      background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
+                      cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
+                      padding: '3px 8px'
+                    }}
+                    onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: true }))}
+                  >
+                    ▲ Collapse
+                  </button>
+                </div>
                 <RuleBuilder
                   rule={rule}
                   onUpdate={updated => handleUpdateRule(rule.id, updated)}
@@ -966,11 +1000,19 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
           </div>
         ))}
 
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button style={STYLES.saveBtn} onClick={handleAddRule}>+ Add Rule</button>
         {rules.length > 0 && (
           <button style={{ ...STYLES.saveBtn, backgroundColor: '#374151' }} onClick={handleSave}>
             ✓ Save Rules
+          </button>
+        )}
+        {rules.length > 0 && (
+          <button
+            style={{ ...STYLES.saveBtn, backgroundColor: '#0c1a2e', border: '1px solid #0c4a6e', color: '#38bdf8' }}
+            onClick={handleSaveToLibrary}
+          >
+            ★ Save checked to Library
           </button>
         )}
       </div>

@@ -6,6 +6,7 @@ import { defaultConfig } from './defaultConfig';
 const CONFIG_KEY = 'inventoryAuditConfig';
 const HEADERS_KEY = 'detectedHeaders';
 const DATA_SOURCES_KEY = 'activeDataSources';
+const LIBRARY_KEY = 'inventoryAuditLibrary';
 
 // =================================================================
 // CONFIG MANAGEMENT
@@ -16,7 +17,6 @@ export function loadConfig() {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Merge with defaultConfig to ensure new fields exist
       return {
         ...defaultConfig,
         ...parsed,
@@ -49,6 +49,8 @@ export function resetConfig() {
     localStorage.removeItem(CONFIG_KEY);
     localStorage.removeItem(HEADERS_KEY);
     localStorage.removeItem(DATA_SOURCES_KEY);
+    // Note: LIBRARY_KEY is intentionally NOT cleared on reset
+    // so the user's saved library survives a config reset
     return true;
   } catch (e) {
     console.error('Failed to reset config:', e);
@@ -94,7 +96,6 @@ export function loadDetectedHeaders() {
 
 // =================================================================
 // DATA SOURCES MANAGEMENT
-// Session-only in the app state, but we track source names here
 // =================================================================
 
 export function saveDataSourceNames(sourceNames) {
@@ -114,5 +115,153 @@ export function loadDataSourceNames() {
   } catch (e) {
     console.error('Failed to load data source names:', e);
     return [];
+  }
+}
+
+// =================================================================
+// CONFIG EXPORT / IMPORT
+// =================================================================
+
+export function exportConfig(config) {
+  try {
+    const exportData = {
+      ...config,
+      _exportedAt: new Date().toISOString(),
+      _version: '2.1.0'
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-config-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    return true;
+  } catch (e) {
+    console.error('Failed to export config:', e);
+    return false;
+  }
+}
+
+export function importConfig(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const cleaned = {
+          ...defaultConfig,
+          ...parsed,
+          processingSteps: parsed.processingSteps || [],
+          auditCategories: parsed.auditCategories || [],
+          auditRules: parsed.auditRules || [],
+          assetTypes: parsed.assetTypes || {},
+          runHistory: parsed.runHistory || []
+        };
+        saveConfig(cleaned);
+        resolve(cleaned);
+      } catch (err) {
+        reject(new Error('Invalid config file.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsText(file);
+  });
+}
+
+// =================================================================
+// LIBRARY MANAGEMENT
+// Completely separate from config — lives in its own localStorage key.
+// Config saves can never touch or wipe library entries.
+// =================================================================
+
+export function loadLibrary() {
+  try {
+    const stored = localStorage.getItem(LIBRARY_KEY);
+    return stored
+      ? JSON.parse(stored)
+      : { ruleHistory: [], categoryHistory: [], stepHistory: [] };
+  } catch (e) {
+    console.error('Failed to load library:', e);
+    return { ruleHistory: [], categoryHistory: [], stepHistory: [] };
+  }
+}
+
+function _saveLibrary(library) {
+  try {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(library));
+    return true;
+  } catch (e) {
+    console.error('Failed to save library:', e);
+    return false;
+  }
+}
+
+export function addToRuleHistory(rule) {
+  try {
+    const library = loadLibrary();
+    const filtered = library.ruleHistory.filter(r => r.name !== rule.name);
+    library.ruleHistory = [rule, ...filtered].slice(0, 20);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to save rule to library:', e);
+    return false;
+  }
+}
+
+export function addToCategoryHistory(category) {
+  try {
+    const library = loadLibrary();
+    const filtered = library.categoryHistory.filter(c => c !== category);
+    library.categoryHistory = [category, ...filtered].slice(0, 50);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to save category to library:', e);
+    return false;
+  }
+}
+
+export function addToStepHistory(step) {
+  try {
+    const library = loadLibrary();
+    const filtered = library.stepHistory.filter(s => s.name !== step.name);
+    library.stepHistory = [step, ...filtered].slice(0, 20);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to save step to library:', e);
+    return false;
+  }
+}
+
+export function deleteFromRuleHistory(name) {
+  try {
+    const library = loadLibrary();
+    library.ruleHistory = library.ruleHistory.filter(r => r.name !== name);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to delete rule from library:', e);
+    return false;
+  }
+}
+
+export function deleteFromCategoryHistory(category) {
+  try {
+    const library = loadLibrary();
+    library.categoryHistory = library.categoryHistory.filter(c => c !== category);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to delete category from library:', e);
+    return false;
+  }
+}
+
+export function deleteFromStepHistory(name) {
+  try {
+    const library = loadLibrary();
+    library.stepHistory = library.stepHistory.filter(s => s.name !== name);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to delete step from library:', e);
+    return false;
   }
 }

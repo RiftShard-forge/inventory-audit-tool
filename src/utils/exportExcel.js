@@ -107,6 +107,15 @@ export function exportToExcel(assetName, results) {
     'Clean'
   );
 
+  // Unaccounted tab — only added if Safety Net found dropped assets
+  if (results.unaccounted && results.unaccounted.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      toWorksheet(results.unaccounted, false),
+      '⚠ Unaccounted'
+    );
+  }
+
   const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([excelBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

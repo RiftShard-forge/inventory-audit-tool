@@ -189,7 +189,23 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         dataSources
       );
 
-      setResults({ ...auditResults, assetName: selectedAssetConfig.name });
+      // Safety Net — find assets from input that didn't land anywhere in output
+      const outputIdentifiers = new Set([
+        ...Object.values(auditResults.byCategory).flat(),
+        ...auditResults.clean,
+        ...auditResults.blacklisted
+      ].map(row => (
+        row['Serial Number'] || row['Serial'] || row['Computer'] || row['Asset Tag'] || ''
+      ).trim().toLowerCase()));
+
+      const unaccounted = primarySource.rows.filter(row => {
+        const id = (
+          row['Serial Number'] || row['Serial'] || row['Computer'] || row['Asset Tag'] || ''
+        ).trim().toLowerCase();
+        return id && !outputIdentifiers.has(id);
+      });
+
+      setResults({ ...auditResults, assetName: selectedAssetConfig.name, unaccounted });
 
       addToHistory({
         date: new Date().toLocaleString(),
@@ -337,6 +353,20 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
             ))}
           </div>
 
+          {/* Safety Net counter */}
+          <div style={{
+            padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
+            fontSize: '13px', fontWeight: '500',
+            backgroundColor: results.unaccounted.length > 0 ? '#1f1315' : '#0f1f17',
+            border: `1px solid ${results.unaccounted.length > 0 ? '#7f1d1d' : '#064e3b'}`,
+            color: results.unaccounted.length > 0 ? '#fca5a5' : '#6ee7b7'
+          }}>
+            {results.unaccounted.length > 0
+              ? `⚠ Safety Net: ${results.summary.totalProcessed} in — ${results.summary.totalProcessed - results.unaccounted.length} out — ${results.unaccounted.length} asset(s) unaccounted`
+              : `✓ Safety Net: ${results.summary.totalProcessed} in — ${results.summary.totalProcessed} out — all assets accounted for`
+            }
+          </div>
+          
           {/* Category previews */}
           {Object.entries(results.byCategory).map(([category, rows]) => (
             <div key={category} style={STYLES.categoryCard}>
