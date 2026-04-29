@@ -9,6 +9,7 @@ import Settings from './pages/Settings';
 import PreviewRun from './pages/PreviewRun';
 import History from './pages/History';
 import './App.css';
+const version = process.env.REACT_APP_VERSION || require('../package.json').version;
 
 const NAV_ITEMS = [
   { id: 'sources', label: '📂 Data Sources' },
@@ -112,7 +113,7 @@ export default function App() {
           ))}
         </ul>
         <div className="sidebar-footer">
-          <p>v2.2.0</p>
+          <p>v{version}</p>
           {Object.keys(dataSources).length > 0 && (
             <p style={{ color: '#34d399', fontSize: '10px', marginTop: '4px' }}>
               ● {Object.keys(dataSources).length} source{Object.keys(dataSources).length !== 1 ? 's' : ''} loaded
