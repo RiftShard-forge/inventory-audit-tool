@@ -119,7 +119,8 @@ function PreviewTable({ rows, maxRows = 5 }) {
                 <td key={k} style={{
                   ...STYLES.td,
                   color: k.startsWith('_') ? '#a78bfa' : '#e0e0e0',
-                  maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  maxWidth: '200px', overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                 }}>
                   {row[k] || ''}
                 </td>
@@ -161,7 +162,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
   // Pre-run checklist
   const checks = [
     { label: 'Data sources loaded', ok: sourceKeys.length > 0, detail: `${sourceKeys.length} source(s): ${sourceKeys.join(', ')}` },
-    { label: 'Asset type selected', ok: !!selectedAsset, detail: selectedAssetConfig?.name || 'None selected' },
+    { label: 'Audit Profile selected', ok: !!selectedAsset, detail: selectedAssetConfig?.name || 'None selected' },
     { label: 'Primary source selected', ok: !!selectedPrimarySource, detail: selectedPrimarySource || 'None selected' },
     { label: 'Audit rules configured', ok: applicableRules.length > 0, detail: `${applicableRules.length} rule(s) selected` },
     { label: 'Categories defined', ok: (config.auditCategories || []).length > 0, detail: `${(config.auditCategories || []).length} category(ies)` }
@@ -238,18 +239,20 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         Configure your audit run, verify everything is ready, then execute.
       </p>
 
-      {/* Configuration */}
+      {/* Audit Configuration */}
       <div style={STYLES.section}>
         <div style={STYLES.sectionTitle}>Audit Configuration</div>
 
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Asset Type</div>
+          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>
+            Audit Profile
+          </div>
           <select
             style={STYLES.select}
             value={selectedAsset}
             onChange={e => { setSelectedAsset(e.target.value); setResults(null); }}
           >
-            <option value="">— Select asset type —</option>
+            <option value="">— Select audit profile —</option>
             {assetKeys.map(key => (
               <option key={key} value={key}>{assetTypes[key].name}</option>
             ))}
@@ -257,7 +260,9 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>Primary Data Source</div>
+          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px' }}>
+            Primary Data Source
+          </div>
           <select
             style={STYLES.select}
             value={selectedPrimarySource}
@@ -334,15 +339,21 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
             gridTemplateColumns: `repeat(${Math.min(3 + Object.keys(results.byCategory).length, 6)}, 1fr)`
           }}>
             <div style={STYLES.statCard}>
-              <div style={{ ...STYLES.statNumber, color: '#34d399' }}>{results.summary.totalClean}</div>
-              <div style={STYLES.statLabel}>Clean</div>
+              <div style={{ ...STYLES.statNumber, color: '#34d399' }}>
+                {results.summary.totalClean}
+              </div>
+              <div style={STYLES.statLabel}>Uncategorized</div>
             </div>
             <div style={STYLES.statCard}>
-              <div style={{ ...STYLES.statNumber, color: '#f87171' }}>{results.summary.totalFlagged}</div>
+              <div style={{ ...STYLES.statNumber, color: '#f87171' }}>
+                {results.summary.totalFlagged}
+              </div>
               <div style={STYLES.statLabel}>Total Flagged</div>
             </div>
             <div style={STYLES.statCard}>
-              <div style={{ ...STYLES.statNumber, color: '#a78bfa' }}>{results.summary.totalBlacklisted}</div>
+              <div style={{ ...STYLES.statNumber, color: '#a78bfa' }}>
+                {results.summary.totalBlacklisted}
+              </div>
               <div style={STYLES.statLabel}>Suppressed</div>
             </div>
             {Object.entries(results.summary.byCategory).map(([cat, count]) => (
@@ -366,22 +377,31 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
               : `✓ Safety Net: ${results.summary.totalProcessed} in — ${results.summary.totalProcessed} out — all assets accounted for`
             }
           </div>
-          
-          {/* Category previews */}
-          {Object.entries(results.byCategory).map(([category, rows]) => (
-            <div key={category} style={STYLES.categoryCard}>
-              <div style={STYLES.categoryHeader}>
-                <span style={STYLES.categoryName}>{category}</span>
-                <span style={STYLES.categoryCount}>{rows.length} asset{rows.length !== 1 ? 's' : ''}</span>
-              </div>
-              <PreviewTable rows={rows} maxRows={3} />
-            </div>
-          ))}
 
+          {/* Category previews — sorted by severity */}
+          {Object.entries(results.byCategory)
+            .sort((a, b) => {
+              const sevA = results.categorySeverity?.[a[0]] ?? 99;
+              const sevB = results.categorySeverity?.[b[0]] ?? 99;
+              return sevA - sevB;
+            })
+            .map(([category, rows]) => (
+              <div key={category} style={STYLES.categoryCard}>
+                <div style={STYLES.categoryHeader}>
+                  <span style={STYLES.categoryName}>{category}</span>
+                  <span style={STYLES.categoryCount}>
+                    {rows.length} asset{rows.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <PreviewTable rows={rows} maxRows={3} />
+              </div>
+            ))}
+
+          {/* Uncategorized preview (formerly Clean) */}
           {results.clean.length > 0 && (
             <div style={STYLES.categoryCard}>
               <div style={STYLES.categoryHeader}>
-                <span style={{ ...STYLES.categoryName, color: '#34d399' }}>Clean</span>
+                <span style={{ ...STYLES.categoryName, color: '#34d399' }}>Uncategorized</span>
                 <span style={{ ...STYLES.categoryCount, backgroundColor: '#0f1f17', borderColor: '#064e3b', color: '#34d399' }}>
                   {results.clean.length} asset{results.clean.length !== 1 ? 's' : ''}
                 </span>

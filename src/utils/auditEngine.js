@@ -110,8 +110,6 @@ function evaluateCondition(condition, row, allSources) {
   const primaryValue = row[sourceColumn] || '';
 
   if (compareType === 'value' || !compareType) {
-    // Check if compareValue is a column header in the same source row
-    // If the row has a key matching compareValue, use that column's value
     const resolvedCompareValue = (compareValue && row.hasOwnProperty(compareValue))
       ? row[compareValue]
       : compareValue;
@@ -136,8 +134,12 @@ function evaluateCondition(condition, row, allSources) {
     const lookupValue = matchedRow[lookupValueColumn] || '';
 
     if (compareValue) {
-      return applyOperator(lookupValue, operator, compareValue);
+      const resolvedCompareValue = (compareValue && row.hasOwnProperty(compareValue))
+        ? row[compareValue]
+        : compareValue;
+      return applyOperator(lookupValue, operator, resolvedCompareValue);
     }
+
     return applyOperator(primaryValue, operator, lookupValue);
   }
 
@@ -149,7 +151,6 @@ function evaluateCondition(condition, row, allSources) {
 // =================================================================
 
 function evaluateRule(rule, row, allSources) {
-  // New multi-condition format
   if (rule.conditions && rule.conditions.length > 0) {
     let result = false;
     let currentGroupResult = true;
@@ -180,7 +181,6 @@ function evaluateRule(rule, row, allSources) {
     return result;
   }
 
-  // Legacy single-condition format (backwards compatible)
   try {
     return evaluateCondition(rule, row, allSources);
   } catch (e) {
@@ -201,8 +201,16 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     .filter(rule => selectedRules.includes(rule.id))
     .sort((a, b) => (a.severity || 10) - (b.severity || 10));
 
+  // Build category severity map — lowest severity rule per category
+  // Used by exportExcel to order tabs left to right by severity
+  const categorySeverity = {};
+  applicableRules.forEach(rule => {
+    const cat = rule.category || 'Uncategorized';
+    const current = categorySeverity[cat] ?? 99;
+    categorySeverity[cat] = Math.min(current, rule.severity || 10);
+  });
+
   // STEP 2: Run processing steps per source
-  // Primary source uses its own selected steps
   let processedRows = [...primarySource.rows];
 
   if (processingSteps && processingSteps.length > 0) {
@@ -266,7 +274,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
         if (triggered) {
           findings.push({ rule, reason: rule.flagReason || rule.name });
           if (rule.suppressOnMatch !== false) {
-            break; // Suppress on match — stop evaluating lower priority rules
+            break;
           }
         }
       } catch (e) {
@@ -312,5 +320,5 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     }, {})
   };
 
-  return { byCategory, blacklisted, clean, summary };
+  return { byCategory, blacklisted, clean, summary, categorySeverity };
 }

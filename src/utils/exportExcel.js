@@ -43,14 +43,14 @@ function toSummarySheet(assetName, summary, timestamp) {
   const data = [
     ['Audit Summary'],
     [''],
-    ['Asset Type', assetName],
+    ['Audit Profile', assetName],
     ['Run Date', timestamp],
     [''],
     ['Category', 'Count'],
     ...Object.entries(summary.byCategory).map(([cat, count]) => [cat, count]),
     [''],
     ['Suppressed (Blacklisted)', summary.totalBlacklisted],
-    ['Clean', summary.totalClean],
+    ['Uncategorized', summary.totalClean],
     [''],
     ['Total Processed', summary.totalProcessed],
     ['Total Flagged', summary.totalFlagged],
@@ -70,6 +70,7 @@ function toSummarySheet(assetName, summary, timestamp) {
 /**
  * MAIN EXPORT FUNCTION
  * Generates .xlsx with dynamic tabs based on audit categories.
+ * Tabs are ordered by rule severity (lowest number = leftmost tab).
  */
 export function exportToExcel(assetName, results) {
   const timestamp = new Date().toLocaleString();
@@ -85,8 +86,14 @@ export function exportToExcel(assetName, results) {
     'Summary'
   );
 
-  // Dynamic category tabs
-  Object.entries(results.byCategory).forEach(([category, rows]) => {
+  // Dynamic category tabs — sorted by severity (lowest = leftmost)
+  const sortedCategories = Object.entries(results.byCategory).sort((a, b) => {
+    const severityA = results.categorySeverity?.[a[0]] ?? 99;
+    const severityB = results.categorySeverity?.[b[0]] ?? 99;
+    return severityA - severityB;
+  });
+
+  sortedCategories.forEach(([category, rows]) => {
     const safeName = category.substring(0, 31).replace(/[:\\/?*[\]]/g, '-');
     XLSX.utils.book_append_sheet(wb, toWorksheet(rows), safeName);
   });
@@ -100,11 +107,11 @@ export function exportToExcel(assetName, results) {
     );
   }
 
-  // Clean tab
+  // Uncategorized tab (formerly Clean)
   XLSX.utils.book_append_sheet(
     wb,
     toWorksheet(results.clean, false),
-    'Clean'
+    'Uncategorized'
   );
 
   // Unaccounted tab — only added if Safety Net found dropped assets

@@ -24,15 +24,6 @@ const STYLES = {
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
   cardTitle: { fontSize: '15px', fontWeight: '600', color: '#ffffff' },
   cardDesc: { fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' },
-  badge: { fontSize: '11px', fontWeight: '500', padding: '3px 10px', borderRadius: '20px', border: '1px solid' },
-  badgeActive: { color: '#34d399', borderColor: '#064e3b', backgroundColor: '#0f1f17' },
-  badgeInactive: { color: '#9ca3af', borderColor: '#374151', backgroundColor: '#1f2937' },
-  toggle: {
-    width: '100%', padding: '9px', borderRadius: '8px', border: '1px solid',
-    fontSize: '13px', fontWeight: '500', cursor: 'pointer', marginBottom: '12px'
-  },
-  toggleActive: { backgroundColor: '#1f1f35', borderColor: '#7f1d1d', color: '#fca5a5' },
-  toggleInactive: { backgroundColor: '#0f1f17', borderColor: '#064e3b', color: '#34d399' },
   chip: {
     fontSize: '11px', padding: '3px 8px', borderRadius: '4px',
     border: '1px solid #2a2d3e', color: '#9ca3af', backgroundColor: '#0f1117',
@@ -101,14 +92,6 @@ const STYLES = {
     padding: '8px 10px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
     borderRadius: '6px', color: '#6366f1', fontSize: '12px',
     cursor: 'pointer', width: '130px', flexShrink: 0
-  },
-  lookupBox: {
-    backgroundColor: '#0a0d14', border: '1px solid #2a2d3e',
-    borderRadius: '8px', padding: '16px', marginTop: '4px'
-  },
-  lookupLabel: {
-    fontSize: '11px', color: '#6b7280', marginBottom: '12px',
-    fontWeight: '500', letterSpacing: '0.05em'
   }
 };
 
@@ -203,7 +186,6 @@ function TagListInput({ label, description, items, onChange }) {
 // LIVE SENTENCE BUILDER
 // =============================================
 function buildRuleSentence(rule) {
-  // Multi-condition rule
   if (rule.conditions && rule.conditions.length > 0) {
     const parts = rule.conditions.map((c, i) => {
       const col = c.sourceColumn || '...';
@@ -214,17 +196,10 @@ function buildRuleSentence(rule) {
         const val = c.compareValue || '...';
         return (
           <span key={i}>
-            {i > 0 && (
-              <strong style={{ color: '#facc15' }}>
-                {' '}{c.connector || 'AND'}{' '}
-              </strong>
-            )}
-            <strong style={{ color: '#38bdf8' }}>{col}</strong>
-            {' '}from{' '}
-            <strong style={{ color: '#38bdf8' }}>{src}</strong>
-            {' '}
-            <strong style={{ color: '#6366f1' }}>{op}</strong>
-            {' '}
+            {i > 0 && <strong style={{ color: '#facc15' }}>{' '}{c.connector || 'AND'}{' '}</strong>}
+            <strong style={{ color: '#38bdf8' }}>{col}</strong>{' '}from{' '}
+            <strong style={{ color: '#38bdf8' }}>{src}</strong>{' '}
+            <strong style={{ color: '#6366f1' }}>{op}</strong>{' '}
             <strong style={{ color: '#34d399' }}>{val}</strong>
           </span>
         );
@@ -238,34 +213,22 @@ function buildRuleSentence(rule) {
         const val = c.compareValue || '...';
         return (
           <span key={i}>
-            {i > 0 && (
-              <strong style={{ color: '#facc15' }}>
-                {' '}{c.connector || 'AND'}{' '}
-              </strong>
-            )}
-            <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>
-            {' '}from{' '}
-            <strong style={{ color: '#38bdf8' }}>{src}</strong>
-            {' '}— in{' '}
-            <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>
-            {' '}where{' '}
-            <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>
-            {' '}matches — has{' '}
-            <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>
-            {' '}
-            <strong style={{ color: '#6366f1' }}>{op}</strong>
-            {' '}
+            {i > 0 && <strong style={{ color: '#facc15' }}>{' '}{c.connector || 'AND'}{' '}</strong>}
+            <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>{' '}from{' '}
+            <strong style={{ color: '#38bdf8' }}>{src}</strong>{' '}— in{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>{' '}where{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>{' '}matches — has{' '}
+            <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>{' '}
+            <strong style={{ color: '#6366f1' }}>{op}</strong>{' '}
             <strong style={{ color: '#34d399' }}>{val}</strong>
           </span>
         );
       }
       return null;
     });
-
     return <span>Flag any row where {parts}</span>;
   }
 
-  // Single condition (legacy)
   const col = rule.sourceColumn || '...';
   const src = rule.sourceId || '...';
   const op = rule.operator || 'equals';
@@ -275,12 +238,9 @@ function buildRuleSentence(rule) {
     return (
       <span>
         Flag any row where{' '}
-        <strong style={{ color: '#38bdf8' }}>{col}</strong>
-        {' '}from{' '}
-        <strong style={{ color: '#38bdf8' }}>{src}</strong>
-        {' '}
-        <strong style={{ color: '#6366f1' }}>{op}</strong>
-        {' '}
+        <strong style={{ color: '#38bdf8' }}>{col}</strong>{' '}from{' '}
+        <strong style={{ color: '#38bdf8' }}>{src}</strong>{' '}
+        <strong style={{ color: '#6366f1' }}>{op}</strong>{' '}
         <strong style={{ color: '#34d399' }}>{val}</strong>
       </span>
     );
@@ -295,18 +255,12 @@ function buildRuleSentence(rule) {
     return (
       <span>
         Flag any row where{' '}
-        <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>
-        {' '}from{' '}
-        <strong style={{ color: '#38bdf8' }}>{src}</strong>
-        {' '}— searching{' '}
-        <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>
-        {' '}where{' '}
-        <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>
-        {' '}matches — has{' '}
-        <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>
-        {' '}
-        <strong style={{ color: '#6366f1' }}>{op}</strong>
-        {' '}
+        <strong style={{ color: '#38bdf8' }}>{searchWith}</strong>{' '}from{' '}
+        <strong style={{ color: '#38bdf8' }}>{src}</strong>{' '}— searching{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupSrc}</strong>{' '}where{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupKey}</strong>{' '}matches — has{' '}
+        <strong style={{ color: '#38bdf8' }}>{lookupVal}</strong>{' '}
+        <strong style={{ color: '#6366f1' }}>{op}</strong>{' '}
         <strong style={{ color: '#34d399' }}>{val}</strong>
       </span>
     );
@@ -321,40 +275,29 @@ function buildRuleSentence(rule) {
 function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) {
   const sourceOptions = detectedHeaders ? Object.keys(detectedHeaders) : [];
 
-  function update(changes) {
-    onUpdate({ ...rule, ...changes });
-  }
+  function update(changes) { onUpdate({ ...rule, ...changes }); }
 
   const severityColor = rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280';
 
   return (
     <div style={STYLES.ruleCard}>
-      {/* Rule header */}
       <div style={STYLES.ruleHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={STYLES.ruleTitle}>{rule.name || 'New Rule'}</span>
           <span style={{
             fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
             backgroundColor: '#1f1315', border: '1px solid #7f1d1d', color: severityColor
-          }}>
-            Priority {rule.severity || 5}
-          </span>
+          }}>Priority {rule.severity || 5}</span>
           {rule.category && (
             <span style={{
               fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
               backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
-            }}>
-              {rule.category}
-            </span>
+            }}>{rule.category}</span>
           )}
         </div>
-        <button
-          style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }}
-          onClick={onRemove}
-        >×</button>
+        <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }} onClick={onRemove}>×</button>
       </div>
 
-      {/* Live sentence */}
       <div style={{
         backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
         borderRadius: '6px', padding: '10px 14px', marginBottom: '14px',
@@ -363,19 +306,14 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         {buildRuleSentence(rule)}
       </div>
 
-      {/* Rule name */}
       <div style={STYLES.row}>
         <span style={STYLES.label}>Rule name</span>
         <input style={STYLES.input} value={rule.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. Check terminated users" />
       </div>
-
-      {/* Flag reason */}
       <div style={STYLES.row}>
         <span style={STYLES.label}>Flag reason</span>
         <input style={STYLES.input} value={rule.flagReason || ''} onChange={e => update({ flagReason: e.target.value })} placeholder="Text shown in Audit Reason column..." />
       </div>
-
-      {/* Category */}
       <div style={STYLES.row}>
         <span style={STYLES.label}>Category</span>
         <select style={STYLES.select} value={rule.category || ''} onChange={e => update({ category: e.target.value })}>
@@ -383,8 +321,6 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
           {(categories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
       </div>
-
-      {/* Priority */}
       <div style={STYLES.row}>
         <span style={STYLES.label}>Priority (1-10)</span>
         <input
@@ -395,8 +331,6 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         />
         <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first</span>
       </div>
-
-      {/* Suppress on match */}
       <div style={{ ...STYLES.row, marginBottom: '4px' }}>
         <span style={STYLES.label}>Suppress on match</span>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
@@ -414,7 +348,6 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
 
       <hr style={{ border: 'none', borderTop: '1px solid #2a2d3e', margin: '12px 0' }} />
 
-      {/* Conditions */}
       {(rule.conditions || []).map((condition, idx) => (
         <div key={idx} style={{
           backgroundColor: '#0a0d14', border: '1px solid #2a2d3e',
@@ -447,7 +380,6 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
             >×</button>
           </div>
 
-          {/* Source */}
           <div style={STYLES.row}>
             <span style={STYLES.label}>Source</span>
             <select style={{ ...STYLES.select, width: '130px', flex: 'none' }}
@@ -469,11 +401,10 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                 update({ conditions: updated });
               }}
               headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
-              placeholder="Header to check..."
+              placeholder="Column or value..."
             />
           </div>
 
-          {/* Compare type */}
           <div style={STYLES.row}>
             <span style={STYLES.label}>Compare to</span>
             <select style={{ ...STYLES.select, width: '140px', flex: 'none' }}
@@ -488,7 +419,6 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
             </select>
           </div>
 
-          {/* Static value */}
           {(!condition.compareType || condition.compareType === 'value') && (
             <>
               <div style={STYLES.row}>
@@ -514,13 +444,12 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                     update({ conditions: updated });
                   }}
                   headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
-                  placeholder="Type a value or select a header from the same source..."
+                  placeholder="Type a value or select a column header..."
                 />
               </div>
             </>
           )}
 
-          {/* Lookup */}
           {condition.compareType === 'lookup' && (
             <div style={{ marginTop: '8px' }}>
               <div style={STYLES.row}>
@@ -533,7 +462,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                     update({ conditions: updated });
                   }}
                   headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
-                  placeholder="e.g. User Email — the header I will search with"
+                  placeholder="Column from primary source to search with..."
                 />
               </div>
               <div style={STYLES.row}>
@@ -557,7 +486,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                     update({ conditions: updated });
                   }}
                   headers={condition.lookupSourceId && detectedHeaders ? detectedHeaders[condition.lookupSourceId] : []}
-                  placeholder="e.g. Work email — the header to match against"
+                  placeholder="Column to match against..."
                 />
               </div>
               <div style={STYLES.row}>
@@ -570,7 +499,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                     update({ conditions: updated });
                   }}
                   headers={condition.lookupSourceId && detectedHeaders ? detectedHeaders[condition.lookupSourceId] : []}
-                  placeholder="e.g. Employment status — the header to read"
+                  placeholder="Column to read from lookup source..."
                 />
                 <select style={STYLES.operatorSelect}
                   value={condition.operator || 'equals'}
@@ -582,15 +511,15 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                 >
                   {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
                 </select>
-                <input
-                  style={{ ...STYLES.input, flex: 1 }}
+                <DiscoverableInput
                   value={condition.compareValue || ''}
-                  onChange={e => {
+                  onChange={val => {
                     const updated = [...(rule.conditions || [])];
-                    updated[idx] = { ...condition, compareValue: e.target.value };
+                    updated[idx] = { ...condition, compareValue: val };
                     update({ conditions: updated });
                   }}
-                  placeholder="e.g. Terminated — the expected value"
+                  headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
+                  placeholder="Value or column to compare against..."
                 />
               </div>
             </div>
@@ -598,13 +527,11 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         </div>
       ))}
 
-      {/* Add condition button */}
       <button
         style={{
           width: '100%', padding: '8px', marginTop: '10px',
           backgroundColor: 'transparent', border: '1px dashed #2a2d3e',
-          borderRadius: '6px', color: '#6b7280', cursor: 'pointer',
-          fontSize: '12px'
+          borderRadius: '6px', color: '#6b7280', cursor: 'pointer', fontSize: '12px'
         }}
         onClick={() => update({
           conditions: [...(rule.conditions || []), {
@@ -614,17 +541,15 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
             lookupKeyColumn: '', lookupValueColumn: ''
           }]
         })}
-      >
-        + Add Condition
-      </button>
+      >+ Add Condition</button>
     </div>
   );
 }
 
 // =============================================
-// ASSET TYPES TAB
+// AUDIT PROFILES TAB (formerly Asset Types)
 // =============================================
-function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
+function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -635,16 +560,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 
   const assetTypes = config.assetTypes || {};
   const auditRules = config.auditRules || [];
-
-  function handleToggleAsset(assetId) {
-    onConfigUpdate({
-      ...config,
-      assetTypes: {
-        ...assetTypes,
-        [assetId]: { ...assetTypes[assetId], enabled: !assetTypes[assetId].enabled }
-      }
-    });
-  }
 
   function handleToggleRule(assetId, ruleId) {
     const asset = assetTypes[assetId];
@@ -716,9 +631,9 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
     <div>
       {Object.keys(assetTypes).length === 0 && (
         <div style={STYLES.infoBox}>
-          💡 Create your first asset type to get started. An asset type represents
-          a category of assets you want to audit (e.g. Workstations, Monitors, Headsets).
-          Each asset type selects which processing steps and audit rules apply to it.
+          💡 Create your first audit profile to get started. An audit profile defines
+          which processing steps and audit rules apply to a specific type of audit
+          (e.g. Workstations, Monitors, Headsets). Select it on Preview & Run to execute.
         </div>
       )}
 
@@ -728,7 +643,7 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
             <div style={STYLES.cardHeader}>
               {editingId === assetId ? (
                 <div style={{ flex: 1 }}>
-                  <input style={STYLES.editInput} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Asset type name..." />
+                  <input style={STYLES.editInput} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Profile name..." />
                   <input style={STYLES.editInput} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Description..." />
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button style={STYLES.addBtnSmall} onClick={() => handleSaveEdit(assetId)}>✓ Save</button>
@@ -739,9 +654,6 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
                 <>
                   <span style={STYLES.cardTitle}>{asset.name}</span>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span style={{ ...STYLES.badge, ...(asset.enabled ? STYLES.badgeActive : STYLES.badgeInactive) }}>
-                      {asset.enabled ? 'Active' : 'Inactive'}
-                    </span>
                     <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px' }} onClick={() => handleStartEdit(assetId)}>✏</button>
                     <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={() => handleDelete(assetId)}>×</button>
                   </div>
@@ -751,13 +663,9 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 
             {editingId !== assetId && (
               <>
-                <p style={STYLES.cardDesc}>{asset.description || 'No description.'}</p>
-                <button
-                  style={{ ...STYLES.toggle, ...(asset.enabled ? STYLES.toggleActive : STYLES.toggleInactive) }}
-                  onClick={() => handleToggleAsset(assetId)}
-                >
-                  {asset.enabled ? '⏸ Disable' : '▶ Enable'}
-                </button>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+                  {asset.description || 'No description.'}
+                </p>
 
                 <div style={{ fontSize: '11px', color: '#a78bfa', marginBottom: '6px', fontWeight: '500' }}>
                   🔍 Audit Rules
@@ -787,7 +695,7 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 
                 <TagListInput
                   label="✓ Whitelist (Serial Numbers)"
-                  description="Always marked clean"
+                  description="Always marked uncategorized"
                   items={asset.whitelist || []}
                   onChange={items => handleListChange(assetId, 'whitelist', items)}
                 />
@@ -804,8 +712,8 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
 
         {showAddForm ? (
           <div style={STYLES.card}>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>New Asset Type</div>
-            <input style={STYLES.editInput} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAsset()} placeholder="Asset type name..." autoFocus />
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>New Audit Profile</div>
+            <input style={STYLES.editInput} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAsset()} placeholder="Profile name..." autoFocus />
             <input style={STYLES.editInput} value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description..." />
             <div style={{ display: 'flex', gap: '6px' }}>
               <button style={STYLES.addBtnSmall} onClick={handleAddAsset}>✓ Create</button>
@@ -819,13 +727,13 @@ function AssetTypesTab({ config, onConfigUpdate, detectedHeaders }) {
           >
             <div style={{ textAlign: 'center', color: '#6b7280' }}>
               <div style={{ fontSize: '28px', marginBottom: '8px' }}>+</div>
-              <div style={{ fontSize: '13px' }}>Add Asset Type</div>
+              <div style={{ fontSize: '13px' }}>Add Audit Profile</div>
             </div>
           </div>
         )}
       </div>
 
-      <button style={{ ...STYLES.saveBtn, marginTop: '24px' }} onClick={handleSave}>✓ Save Asset Configuration</button>
+      <button style={{ ...STYLES.saveBtn, marginTop: '24px' }} onClick={handleSave}>✓ Save Audit Profiles</button>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
     </div>
   );
@@ -851,18 +759,13 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
     const newRule = {
       id: `rule_${Date.now()}`,
       name: '', flagReason: '', category: '', severity: 5,
-      suppressOnMatch: true,
-      conditions: []
+      suppressOnMatch: true, conditions: []
     };
     onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
   }
 
   function handleUpdateRule(ruleId, updatedRule) {
-    const updatedRules = rules.map(r => r.id === ruleId ? updatedRule : r);
-    onConfigUpdate({
-      ...config,
-      auditRules: updatedRules
-    });
+    onConfigUpdate({ ...config, auditRules: rules.map(r => r.id === ruleId ? updatedRule : r) });
     setSavedMsg('');
   }
 
@@ -889,7 +792,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Audit rules define what to check during an audit. Each rule compares a header
+        💡 Audit rules define what to check during an audit. Each rule compares a column
         value using an operator against either a static value or a lookup from another
         data source. Rules run in priority order (1 = first). Each rule is assigned
         to a category which becomes a tab in your output report.
@@ -906,114 +809,71 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
         </div>
       )}
 
-      {rules
-        .sort((a, b) => (a.severity || 5) - (b.severity || 5))
-        .map(rule => (
-          <div key={rule.id}>
-            {/* Collapsed view */}
-            {collapsedRules[rule.id] ? (
-              <div style={{
-                backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
-                borderRadius: '8px', padding: '12px 16px', marginBottom: '10px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>
-                    {rule.name || 'New Rule'}
-                  </span>
-                  {rule.severity && (
-                    <span style={{
-                      fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
-                      backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
-                      color: rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280'
-                    }}>
-                      Priority {rule.severity}
-                    </span>
-                  )}
-                  {rule.category && (
-                    <span style={{
-                      fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
-                      backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
-                    }}>
-                      {rule.category}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '11px', color: '#4b5563' }}>
-                    {(rule.conditions || []).length} condition(s)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={checkedRules.includes(rule.id)}
-                    onChange={() => handleToggleCheck(rule.id)}
-                    style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                  />
-                  <button
-                    style={{
-                      background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
-                      cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
-                      padding: '3px 8px'
-                    }}
-                    onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: false }))}
-                  >
-                    ▼ Expand
-                  </button>
-                  <button
-                    style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }}
-                    onClick={() => handleRemoveRule(rule.id)}
-                  >×</button>
-                </div>
+      {rules.sort((a, b) => (a.severity || 5) - (b.severity || 5)).map(rule => (
+        <div key={rule.id}>
+          {collapsedRules[rule.id] ? (
+            <div style={{
+              backgroundColor: '#0f1117', border: '1px solid #2a2d3e',
+              borderRadius: '8px', padding: '12px 16px', marginBottom: '10px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>{rule.name || 'New Rule'}</span>
+                {rule.severity && (
+                  <span style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                    backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
+                    color: rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280'
+                  }}>Priority {rule.severity}</span>
+                )}
+                {rule.category && (
+                  <span style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                    backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
+                  }}>{rule.category}</span>
+                )}
+                <span style={{ fontSize: '11px', color: '#4b5563' }}>{(rule.conditions || []).length} condition(s)</span>
               </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <div style={{
-                  position: 'absolute', top: '12px', right: '40px', zIndex: 10,
-                  display: 'flex', gap: '6px', alignItems: 'center'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={checkedRules.includes(rule.id)}
-                    onChange={() => handleToggleCheck(rule.id)}
-                    style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                  />
-                  <button
-                    style={{
-                      background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
-                      cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
-                      padding: '3px 8px'
-                    }}
-                    onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: true }))}
-                  >
-                    ▲ Collapse
-                  </button>
-                </div>
-                <RuleBuilder
-                  rule={rule}
-                  onUpdate={updated => handleUpdateRule(rule.id, updated)}
-                  onRemove={() => handleRemoveRule(rule.id)}
-                  detectedHeaders={detectedHeaders}
-                  categories={categories}
-                />
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input type="checkbox" checked={checkedRules.includes(rule.id)} onChange={() => handleToggleCheck(rule.id)} style={{ cursor: 'pointer', accentColor: '#6366f1' }} />
+                <button
+                  style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
+                  onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: false }))}
+                >▼ Expand</button>
+                <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={() => handleRemoveRule(rule.id)}>×</button>
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          ) : (
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '12px', right: '40px', zIndex: 10, display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input type="checkbox" checked={checkedRules.includes(rule.id)} onChange={() => handleToggleCheck(rule.id)} style={{ cursor: 'pointer', accentColor: '#6366f1' }} />
+                <button
+                  style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
+                  onClick={() => setCollapsedRules(prev => ({ ...prev, [rule.id]: true }))}
+                >▲ Collapse</button>
+              </div>
+              <RuleBuilder
+                rule={rule}
+                onUpdate={updated => handleUpdateRule(rule.id, updated)}
+                onRemove={() => handleRemoveRule(rule.id)}
+                detectedHeaders={detectedHeaders}
+                categories={categories}
+              />
+            </div>
+          )}
+        </div>
+      ))}
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
         <button style={STYLES.saveBtn} onClick={handleAddRule}>+ Add Rule</button>
         {rules.length > 0 && (
-          <button style={{ ...STYLES.saveBtn, backgroundColor: '#374151' }} onClick={handleSave}>
-            ✓ Save Rules
-          </button>
+          <button style={{ ...STYLES.saveBtn, backgroundColor: '#374151' }} onClick={handleSave}>✓ Save Rules</button>
         )}
         {rules.length > 0 && (
           <button
             style={{ ...STYLES.saveBtn, backgroundColor: '#0c1a2e', border: '1px solid #0c4a6e', color: '#38bdf8' }}
             onClick={handleSaveToLibrary}
-          >
-            ★ Save checked to Library
-          </button>
+          >★ Save checked to Library</button>
         )}
       </div>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
@@ -1028,14 +888,14 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
   const [activeTab, setActiveTab] = useState('assets');
 
   const tabs = [
-    { id: 'assets', label: '📦 Asset Types' },
+    { id: 'assets', label: '🎯 Audit Profiles' },
     { id: 'rules', label: '🔍 Audit Rules' }
   ];
 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Module Manager</h2>
-      <p style={STYLES.subtitle}>Define asset types and build audit rules.</p>
+      <p style={STYLES.subtitle}>Define audit profiles and build audit rules.</p>
 
       <div style={STYLES.tabs}>
         {tabs.map(tab => (
@@ -1050,7 +910,7 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
       </div>
 
       {activeTab === 'assets' && (
-        <AssetTypesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />
+        <AuditProfilesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />
       )}
       {activeTab === 'rules' && (
         <AuditRulesTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />

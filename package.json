@@ -1,6 +1,6 @@
 {
   "name": "inventory-audit-tool",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "homepage": "https://RiftShard-forge.github.io/inventory-audit-tool",
   "dependencies": {
