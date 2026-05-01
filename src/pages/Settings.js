@@ -36,7 +36,7 @@ const STYLES = {
     color: '#e0e0e0', fontSize: '13px', cursor: 'pointer', width: '100%'
   },
   row: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' },
-  label: { fontSize: '12px', color: '#9ca3af', width: '120px', flexShrink: 0 },
+  label: { fontSize: '12px', color: '#9ca3af', width: '140px', flexShrink: 0 },
   addBtn: {
     padding: '9px 16px', backgroundColor: '#6366f1', color: '#ffffff',
     border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer'
@@ -107,9 +107,31 @@ const STYLES = {
 };
 
 const STEP_TYPES = [
-  { value: 'mapValue', label: 'Map Value', desc: 'Replace specific values in a column with normalized values (e.g. "Base Site" → "Santo Domingo Office")' },
-  { value: 'stripText', label: 'Strip Text', desc: 'Remove a substring from all values in a column (e.g. strip "@company.co" from emails)' },
-  { value: 'tagByValue', label: 'Tag by Value', desc: 'Add a new tag column based on the value of another column (e.g. tag rows by OS type)' }
+  {
+    value: 'mapValue',
+    label: 'Map Value',
+    desc: 'Replace specific values in a column with normalized values (e.g. "Base Site" → "Santo Domingo Office")'
+  },
+  {
+    value: 'stripText',
+    label: 'Strip Text',
+    desc: 'Remove a substring from all values in a column (e.g. strip "@company.co" from emails)'
+  },
+  {
+    value: 'tagByValue',
+    label: 'Tag by Value',
+    desc: 'Add a new tag column based on the value of another column (e.g. tag rows by OS type)'
+  },
+  {
+    value: 'deduplicateRows',
+    label: 'Deduplicate Rows',
+    desc: 'Remove duplicate rows in a source, keeping the one with the most recent date. Useful for sources with rehired employees or repeated entries (e.g. keep newest profile by Start date)'
+  },
+  {
+    value: 'conditionalMap',
+    label: 'Conditional Map',
+    desc: 'If a column contains/equals a value, set another column to a specific value (e.g. if Location contains "STI" → set Site to "Santiago: Edificio Aney Munoz I")'
+  }
 ];
 
 // =============================================
@@ -172,19 +194,25 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
 
       <div style={STYLES.row}>
         <span style={STYLES.label}>Step name</span>
-        <input style={STYLES.input} value={step.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. Normalize site names" />
+        <input style={STYLES.input} value={step.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. RP - Deduplicate by Email" />
       </div>
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Apply to column</span>
-        <input style={STYLES.input} value={step.columnName || ''} onChange={e => update({ columnName: e.target.value })} placeholder="Header name from your CSV..." list={`headers-${step.id}`} />
-        <datalist id={`headers-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
-      </div>
+
+      {/* Apply to column — not needed for deduplicateRows */}
+      {step.type !== 'deduplicateRows' && (
+        <div style={STYLES.row}>
+          <span style={STYLES.label}>Apply to column</span>
+          <input style={STYLES.input} value={step.columnName || ''} onChange={e => update({ columnName: e.target.value })} placeholder="Header name from your CSV..." list={`headers-${step.id}`} />
+          <datalist id={`headers-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+        </div>
+      )}
+
       <div style={STYLES.row}>
         <span style={STYLES.label}>Run order</span>
         <input style={{ ...STYLES.input, width: '80px', flex: 'none' }} type="number" min="1" value={step.order || 1} onChange={e => update({ order: parseInt(e.target.value) || 1 })} />
         <span style={{ fontSize: '12px', color: '#4b5563' }}>Lower number runs first</span>
       </div>
 
+      {/* MAP VALUE */}
       {step.type === 'mapValue' && (
         <div style={{ marginTop: '12px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>Value Mappings</div>
@@ -206,6 +234,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         </div>
       )}
 
+      {/* STRIP TEXT */}
       {step.type === 'stripText' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.row}>
@@ -215,6 +244,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         </div>
       )}
 
+      {/* TAG BY VALUE */}
       {step.type === 'tagByValue' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.row}>
@@ -235,6 +265,102 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
             <span style={{ color: '#6b7280', fontSize: '12px' }}>→</span>
             <input style={STYLES.mapInput} placeholder="Tag label..." value={newTagLabel} onChange={e => setNewTagLabel(e.target.value)} />
             <button style={STYLES.addBtn} onClick={addTag}>+ Add</button>
+          </div>
+        </div>
+      )}
+
+      {/* DEDUPLICATE ROWS */}
+      {step.type === 'deduplicateRows' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.infoBox}>
+            Removes duplicate rows keeping the one with the most recent date.
+            Use this on sources like Rippling where rehired employees appear twice
+            with the same email — the newest profile will be kept.
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Deduplicate by</span>
+            <input
+              style={STYLES.input}
+              value={step.config.deduplicateBy || ''}
+              onChange={e => updateConfig({ deduplicateBy: e.target.value })}
+              placeholder="Column to check for duplicates (e.g. Work email)"
+              list={`headers-dedup-${step.id}`}
+            />
+            <datalist id={`headers-dedup-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Keep latest by</span>
+            <input
+              style={STYLES.input}
+              value={step.config.dateColumn || ''}
+              onChange={e => updateConfig({ dateColumn: e.target.value })}
+              placeholder="Date column to determine winner (e.g. Start date)"
+              list={`headers-date-${step.id}`}
+            />
+            <datalist id={`headers-date-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+        </div>
+      )}
+
+      {/* CONDITIONAL MAP */}
+      {step.type === 'conditionalMap' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.infoBox}>
+            If the source column matches a condition, set another column to a specific value.
+            Example: if Location contains "STI" → set Site to "Santiago: Edificio Aney Munoz I"
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Check column</span>
+            <input
+              style={STYLES.input}
+              value={step.columnName || ''}
+              onChange={e => update({ columnName: e.target.value })}
+              placeholder="Column to check (e.g. Location)"
+              list={`headers-cond-${step.id}`}
+            />
+            <datalist id={`headers-cond-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Operator</span>
+            <select
+              style={{ ...STYLES.select, width: '160px', flex: 'none' }}
+              value={step.config.operator || 'contains'}
+              onChange={e => updateConfig({ operator: e.target.value })}
+            >
+              <option value="contains">contains</option>
+              <option value="equals">equals</option>
+              <option value="starts with">starts with</option>
+              <option value="ends with">ends with</option>
+            </select>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Match value</span>
+            <input
+              style={STYLES.input}
+              value={step.config.matchValue || ''}
+              onChange={e => updateConfig({ matchValue: e.target.value })}
+              placeholder="Value to look for (e.g. STI)"
+            />
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Then set column</span>
+            <input
+              style={STYLES.input}
+              value={step.config.targetColumn || ''}
+              onChange={e => updateConfig({ targetColumn: e.target.value })}
+              placeholder="Column to update (e.g. Site)"
+              list={`headers-target-${step.id}`}
+            />
+            <datalist id={`headers-target-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>To value</span>
+            <input
+              style={STYLES.input}
+              value={step.config.targetValue || ''}
+              onChange={e => updateConfig({ targetValue: e.target.value })}
+              placeholder="Value to set (e.g. Santiago: Edificio Aney Munoz I)"
+            />
           </div>
         </div>
       )}
@@ -274,8 +400,21 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
 
   function handleAddStep(type) {
     const id = `step_${Date.now()}`;
-    const stepConfig = type === 'mapValue' ? { mappings: {} } : type === 'stripText' ? { textToStrip: '' } : { tagColumn: '_tag', valueTags: {} };
-    onConfigUpdate({ ...config, processingSteps: [...steps, { id, name: '', type, columnName: '', enabled: true, order: steps.length + 1, config: stepConfig }] });
+    const stepConfig =
+      type === 'mapValue' ? { mappings: {} } :
+      type === 'stripText' ? { textToStrip: '' } :
+      type === 'tagByValue' ? { tagColumn: '_tag', valueTags: {} } :
+      type === 'deduplicateRows' ? { deduplicateBy: '', dateColumn: '' } :
+      type === 'conditionalMap' ? { operator: 'contains', matchValue: '', targetColumn: '', targetValue: '' } :
+      {};
+
+    onConfigUpdate({
+      ...config,
+      processingSteps: [...steps, {
+        id, name: '', type, columnName: '',
+        enabled: true, order: steps.length + 1, config: stepConfig
+      }]
+    });
     setShowTypeSelector(false);
     setSaved(false);
   }
@@ -302,7 +441,7 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
       <div style={STYLES.infoBox}>
         💡 Processing steps run before audit rules to clean and normalize your data.
         Steps run in the order number you assign. Lower = runs first.
-        Each asset type selects which steps apply to it in Module Manager.
+        Each audit profile selects which steps apply to it in Module Manager.
       </div>
 
       {steps.length === 0 && (
@@ -481,7 +620,7 @@ function ResetTab() {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Reset Configuration</div>
       <p style={STYLES.sectionDesc}>
-        Clears all saved settings — asset types, audit rules, processing steps,
+        Clears all saved settings — audit profiles, audit rules, processing steps,
         categories, and run history. Cannot be undone. Your library is preserved.
       </p>
       <button style={STYLES.dangerBtn} onClick={() => setShowConfirm(true)}>⚠ Reset All Settings</button>
@@ -523,7 +662,7 @@ function ConfigTab({ config, onConfigUpdate }) {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Configuration Backup</div>
       <p style={STYLES.sectionDesc}>
-        Export your entire configuration (rules, categories, processing steps, asset types)
+        Export your entire configuration (rules, categories, processing steps, audit profiles)
         to a .json file. Import it any time to restore everything in one click —
         useful after deployments or when setting up a new machine.
       </p>
@@ -547,7 +686,6 @@ function LibraryTab({ config, onConfigUpdate }) {
   const [library, setLibrary] = useState({ ruleHistory: [], categoryHistory: [], stepHistory: [] });
   const [savedMsg, setSavedMsg] = useState('');
 
-  // Load library from its own separate localStorage key on mount
   useEffect(() => {
     setLibrary(loadLibrary());
   }, []);

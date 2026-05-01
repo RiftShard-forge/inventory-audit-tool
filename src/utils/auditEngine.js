@@ -38,17 +38,20 @@ export function parseCsv(text) {
 
 function runProcessingStep(rows, step) {
   const { type, columnName, config: stepConfig } = step;
-  if (!columnName) return rows;
 
   switch (type) {
+
     case 'mapValue': {
+      if (!columnName) return rows;
       const { mappings = {} } = stepConfig;
       return rows.map(row => {
         const val = row[columnName];
         return { ...row, [columnName]: mappings[val] || val };
       });
     }
+
     case 'stripText': {
+      if (!columnName) return rows;
       const { textToStrip = '' } = stepConfig;
       if (!textToStrip) return rows;
       return rows.map(row => {
@@ -56,7 +59,9 @@ function runProcessingStep(rows, step) {
         return { ...row, [columnName]: val.replace(textToStrip, '').trim() };
       });
     }
+
     case 'tagByValue': {
+      if (!columnName) return rows;
       const { tagColumn = '_tag', valueTags = {} } = stepConfig;
       return rows.map(row => {
         const val = row[columnName];
@@ -64,6 +69,71 @@ function runProcessingStep(rows, step) {
         return { ...row, [tagColumn]: tag };
       });
     }
+
+    case 'deduplicateRows': {
+      // Removes duplicate rows keeping the one with the latest date
+      // in the user-defined date column.
+      // User defines: deduplicateBy (column to check for duplicates)
+      //               dateColumn (column to determine which row wins)
+      const { deduplicateBy = '', dateColumn = '' } = stepConfig;
+      if (!deduplicateBy || !dateColumn) return rows;
+
+      const seen = new Map();
+
+      rows.forEach(row => {
+        const key = (row[deduplicateBy] || '').toLowerCase().trim();
+        if (!key) return;
+
+        const existing = seen.get(key);
+        if (!existing) {
+          seen.set(key, row);
+        } else {
+          // Compare dates — keep the row with the more recent date
+          const existingDate = new Date(existing[dateColumn] || 0);
+          const currentDate = new Date(row[dateColumn] || 0);
+          if (currentDate > existingDate) {
+            seen.set(key, row);
+          }
+        }
+      });
+
+      return Array.from(seen.values());
+    }
+
+    case 'conditionalMap': {
+      // If a column contains/equals a value, set another column to a
+      // specified value.
+      // User defines: columnName (column to check)
+      //               operator (contains / equals)
+      //               matchValue (value to look for)
+      //               targetColumn (column to update)
+      //               targetValue (value to set)
+      if (!columnName) return rows;
+      const {
+        operator = 'contains',
+        matchValue = '',
+        targetColumn = '',
+        targetValue = ''
+      } = stepConfig;
+      if (!matchValue || !targetColumn) return rows;
+
+      return rows.map(row => {
+        const src = (row[columnName] || '').toLowerCase().trim();
+        const cmp = matchValue.toLowerCase().trim();
+        let matches = false;
+
+        if (operator === 'contains') matches = src.includes(cmp);
+        else if (operator === 'equals') matches = src === cmp;
+        else if (operator === 'starts with') matches = src.startsWith(cmp);
+        else if (operator === 'ends with') matches = src.endsWith(cmp);
+
+        if (matches) {
+          return { ...row, [targetColumn]: targetValue };
+        }
+        return row;
+      });
+    }
+
     default:
       return rows;
   }
@@ -147,7 +217,7 @@ function evaluateCondition(condition, row, allSources) {
 }
 
 // =================================================================
-// RULE EVALUATOR — supports multiple conditions with AND logic
+// RULE EVALUATOR — supports multiple conditions with AND/OR logic
 // =================================================================
 
 function evaluateRule(rule, row, allSources) {
@@ -201,8 +271,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     .filter(rule => selectedRules.includes(rule.id))
     .sort((a, b) => (a.severity || 10) - (b.severity || 10));
 
-  // Build category severity map — lowest severity rule per category
-  // Used by exportExcel to order tabs left to right by severity
+  // Build category severity map
   const categorySeverity = {};
   applicableRules.forEach(rule => {
     const cat = rule.category || 'Uncategorized';
