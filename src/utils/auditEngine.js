@@ -71,66 +71,39 @@ function runProcessingStep(rows, step) {
     }
 
     case 'deduplicateRows': {
-      // Removes duplicate rows keeping the one with the latest date
-      // in the user-defined date column.
-      // User defines: deduplicateBy (column to check for duplicates)
-      //               dateColumn (column to determine which row wins)
       const { deduplicateBy = '', dateColumn = '' } = stepConfig;
       if (!deduplicateBy || !dateColumn) return rows;
 
       const seen = new Map();
-
       rows.forEach(row => {
         const key = (row[deduplicateBy] || '').toLowerCase().trim();
         if (!key) return;
-
         const existing = seen.get(key);
         if (!existing) {
           seen.set(key, row);
         } else {
-          // Compare dates — keep the row with the more recent date
           const existingDate = new Date(existing[dateColumn] || 0);
           const currentDate = new Date(row[dateColumn] || 0);
-          if (currentDate > existingDate) {
-            seen.set(key, row);
-          }
+          if (currentDate > existingDate) seen.set(key, row);
         }
       });
-
       return Array.from(seen.values());
     }
 
     case 'conditionalMap': {
-      // If a column contains/equals a value, set another column to a
-      // specified value.
-      // User defines: columnName (column to check)
-      //               operator (contains / equals)
-      //               matchValue (value to look for)
-      //               targetColumn (column to update)
-      //               targetValue (value to set)
       if (!columnName) return rows;
-      const {
-        operator = 'contains',
-        matchValue = '',
-        targetColumn = '',
-        targetValue = ''
-      } = stepConfig;
+      const { operator = 'contains', matchValue = '', targetColumn = '', targetValue = '' } = stepConfig;
       if (!matchValue || !targetColumn) return rows;
 
       return rows.map(row => {
         const src = (row[columnName] || '').toLowerCase().trim();
         const cmp = matchValue.toLowerCase().trim();
         let matches = false;
-
         if (operator === 'contains') matches = src.includes(cmp);
         else if (operator === 'equals') matches = src === cmp;
         else if (operator === 'starts with') matches = src.startsWith(cmp);
         else if (operator === 'ends with') matches = src.endsWith(cmp);
-
-        if (matches) {
-          return { ...row, [targetColumn]: targetValue };
-        }
-        return row;
+        return matches ? { ...row, [targetColumn]: targetValue } : row;
       });
     }
 
@@ -159,6 +132,35 @@ function applyOperator(sourceValue, operator, compareValue) {
     case 'is not found': return false;
     default: return src === cmp;
   }
+}
+
+// =================================================================
+// FILTER EVALUATOR
+// Evaluates a filter rule against a row.
+// Returns 'whitelist', 'blacklist', or null.
+// =================================================================
+
+function evaluateFilter(filter, row) {
+  const { column, operator, values } = filter;
+  if (!column || !values || values.length === 0) return null;
+
+  const rowValue = (row[column] || '').toString().toLowerCase().trim();
+
+  // Check if any of the filter values match
+  const matched = values.some(val => {
+    const cmp = val.toLowerCase().trim();
+    switch (operator) {
+      case 'equals': return rowValue === cmp;
+      case 'is not': return rowValue !== cmp;
+      case 'contains': return rowValue.includes(cmp);
+      case 'does not contain': return !rowValue.includes(cmp);
+      case 'starts with': return rowValue.startsWith(cmp);
+      case 'ends with': return rowValue.endsWith(cmp);
+      default: return rowValue === cmp;
+    }
+  });
+
+  return matched ? filter.type : null;
 }
 
 // =================================================================
@@ -191,15 +193,12 @@ function evaluateCondition(condition, row, allSources) {
     if (!lookupSource || !lookupSource.rows) return false;
 
     const matchKey = (row[matchKeyColumn] || '').toLowerCase().trim();
-
     const matchedRow = lookupSource.rows.find(lr => {
       const lrKey = (lr[lookupKeyColumn] || '').toLowerCase().trim();
       return lrKey === matchKey;
     });
 
-    if (!matchedRow) {
-      return operator === 'is not found';
-    }
+    if (!matchedRow) return operator === 'is not found';
 
     const lookupValue = matchedRow[lookupValueColumn] || '';
 
@@ -217,7 +216,7 @@ function evaluateCondition(condition, row, allSources) {
 }
 
 // =================================================================
-// RULE EVALUATOR — supports multiple conditions with AND/OR logic
+// RULE EVALUATOR
 // =================================================================
 
 function evaluateRule(rule, row, allSources) {
@@ -264,7 +263,7 @@ function evaluateRule(rule, row, allSources) {
 // =================================================================
 
 export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw) {
-  const { selectedRules = [], whitelist = [], blacklist = [] } = assetTypeConfig;
+  const { selectedRules = [], filters = [] } = assetTypeConfig;
 
   // STEP 1: Get applicable rules sorted by severity
   const applicableRules = auditRules
@@ -314,27 +313,32 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     });
   }
 
-  // STEP 3: Evaluate rules against each row
+  // STEP 3: Evaluate filters and rules against each row
   const byCategory = {};
   const clean = [];
   const blacklisted = [];
 
   processedRows.forEach(row => {
-    const serial = (
-      row['Serial Number'] || row['Serial'] ||
-      row['Computer'] || row['Asset Tag'] || ''
-    ).trim().toLowerCase();
 
-    if (blacklist.some(b => b.trim().toLowerCase() === serial)) {
+    // Evaluate filter rules first (whitelist/blacklist)
+    // First matching filter wins — same priority logic as audit rules
+    let filterResult = null;
+    for (const filter of filters) {
+      const result = evaluateFilter(filter, row);
+      if (result) { filterResult = result; break; }
+    }
+
+    if (filterResult === 'blacklist') {
       blacklisted.push({ ...row, '_Audit Reason': 'Suppressed - Blacklisted' });
       return;
     }
 
-    if (whitelist.some(w => w.trim().toLowerCase() === serial)) {
+    if (filterResult === 'whitelist') {
       clean.push(row);
       return;
     }
 
+    // No filter matched — run audit rules
     const findings = [];
 
     for (const rule of applicableRules) {
@@ -342,9 +346,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
         const triggered = evaluateRule(rule, row, processedSources);
         if (triggered) {
           findings.push({ rule, reason: rule.flagReason || rule.name });
-          if (rule.suppressOnMatch !== false) {
-            break;
-          }
+          if (rule.suppressOnMatch !== false) break;
         }
       } catch (e) {
         console.warn(`Rule "${rule.name}" error:`, e.message);
