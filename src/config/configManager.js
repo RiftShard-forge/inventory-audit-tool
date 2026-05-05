@@ -9,6 +9,40 @@ const DATA_SOURCES_KEY = 'activeDataSources';
 const LIBRARY_KEY = 'inventoryAuditLibrary';
 
 // =================================================================
+// MIGRATION HELPER
+// Migrates filters from inside assetTypes (old) to top-level (new)
+// Safe to run on every load — exits early if already migrated
+// =================================================================
+
+function migrateFilters(parsed) {
+  // Already has top-level filters — no migration needed
+  if (Array.isArray(parsed.filters)) return parsed;
+
+  // Collect filters from inside assetTypes and migrate them up
+  const migratedFilters = [];
+  const updatedAssetTypes = { ...parsed.assetTypes };
+
+  Object.entries(updatedAssetTypes || {}).forEach(([assetId, asset]) => {
+    if (asset.filters && asset.filters.length > 0) {
+      asset.filters.forEach(filter => {
+        migratedFilters.push({
+          ...filter,
+          profileIds: [assetId]  // scope to the profile it came from
+        });
+      });
+      // Remove filters from assetType
+      updatedAssetTypes[assetId] = { ...asset, filters: undefined };
+    }
+  });
+
+  return {
+    ...parsed,
+    filters: migratedFilters,
+    assetTypes: updatedAssetTypes
+  };
+}
+
+// =================================================================
 // CONFIG MANAGEMENT
 // =================================================================
 
@@ -17,14 +51,16 @@ export function loadConfig() {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
+      const migrated = migrateFilters(parsed);
       return {
         ...defaultConfig,
-        ...parsed,
-        processingSteps: parsed.processingSteps || [],
-        auditCategories: parsed.auditCategories || [],
-        auditRules: parsed.auditRules || [],
-        assetTypes: parsed.assetTypes || {},
-        runHistory: parsed.runHistory || []
+        ...migrated,
+        processingSteps: migrated.processingSteps || [],
+        auditCategories: migrated.auditCategories || [],
+        auditRules: migrated.auditRules || [],
+        assetTypes: migrated.assetTypes || {},
+        filters: migrated.filters || [],
+        runHistory: migrated.runHistory || []
       };
     }
     return defaultConfig;
@@ -44,13 +80,14 @@ export function saveConfig(config) {
   }
 }
 
-export function resetConfig() {
+export function resetConfig(resetLibrary = false) {
   try {
     localStorage.removeItem(CONFIG_KEY);
     localStorage.removeItem(HEADERS_KEY);
     localStorage.removeItem(DATA_SOURCES_KEY);
-    // Note: LIBRARY_KEY is intentionally NOT cleared on reset
-    // so the user's saved library survives a config reset
+    if (resetLibrary) {
+      localStorage.removeItem(LIBRARY_KEY);
+    }
     return true;
   } catch (e) {
     console.error('Failed to reset config:', e);
@@ -124,10 +161,12 @@ export function loadDataSourceNames() {
 
 export function exportConfig(config) {
   try {
+    const library = loadLibrary();
     const exportData = {
       ...config,
+      _library: library,
       _exportedAt: new Date().toISOString(),
-      _version: '2.1.0'
+      _version: '2.4.0'
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -149,14 +188,28 @@ export function importConfig(file) {
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target.result);
+
+        // Restore library if present in export file
+        if (parsed._library) {
+          _saveLibrary({
+            ruleHistory: parsed._library.ruleHistory || [],
+            categoryHistory: parsed._library.categoryHistory || [],
+            stepHistory: parsed._library.stepHistory || []
+          });
+        }
+
+        // Run migration in case file was exported before filters moved to top level
+        const migrated = migrateFilters(parsed);
+
         const cleaned = {
           ...defaultConfig,
-          ...parsed,
-          processingSteps: parsed.processingSteps || [],
-          auditCategories: parsed.auditCategories || [],
-          auditRules: parsed.auditRules || [],
-          assetTypes: parsed.assetTypes || {},
-          runHistory: parsed.runHistory || []
+          ...migrated,
+          processingSteps: migrated.processingSteps || [],
+          auditCategories: migrated.auditCategories || [],
+          auditRules: migrated.auditRules || [],
+          assetTypes: migrated.assetTypes || {},
+          filters: migrated.filters || [],
+          runHistory: migrated.runHistory || []
         };
         saveConfig(cleaned);
         resolve(cleaned);

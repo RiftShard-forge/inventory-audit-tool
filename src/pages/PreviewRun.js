@@ -187,7 +187,8 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         selectedAssetConfig,
         auditRules,
         processingSteps,
-        dataSources
+        dataSources,
+        config.filters || []
       );
 
       // Safety Net — find assets from input that didn't land anywhere in output
@@ -356,6 +357,14 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
               </div>
               <div style={STYLES.statLabel}>Suppressed</div>
             </div>
+            {results.summary.totalUnderInvestigation > 0 && (
+              <div style={STYLES.statCard}>
+                <div style={{ ...STYLES.statNumber, color: '#fb923c' }}>
+                  {results.summary.totalUnderInvestigation}
+                </div>
+                <div style={STYLES.statLabel}>Under Investigation</div>
+              </div>
+            )}
             {Object.entries(results.summary.byCategory).map(([cat, count]) => (
               <div key={cat} style={STYLES.statCard}>
                 <div style={{ ...STYLES.statNumber, color: '#fb923c' }}>{count}</div>

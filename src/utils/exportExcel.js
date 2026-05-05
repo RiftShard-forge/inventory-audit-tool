@@ -50,6 +50,7 @@ function toSummarySheet(assetName, summary, timestamp) {
     ...Object.entries(summary.byCategory).map(([cat, count]) => [cat, count]),
     [''],
     ['Suppressed (Blacklisted)', summary.totalBlacklisted],
+    ['Under Investigation', summary.totalUnderInvestigation || 0],
     ['Uncategorized', summary.totalClean],
     [''],
     ['Total Processed', summary.totalProcessed],
@@ -104,6 +105,15 @@ export function exportToExcel(assetName, results) {
       wb,
       toWorksheet(results.blacklisted),
       'Suppressed'
+    );
+  }
+
+  // Under Investigation tab
+  if (results.underInvestigation && results.underInvestigation.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      toWorksheet(results.underInvestigation),
+      '🔍 Under Investigation'
     );
   }
 

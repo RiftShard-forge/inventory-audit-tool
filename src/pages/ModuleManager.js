@@ -101,6 +101,11 @@ const COMPARE_TYPES = [
   { value: 'lookup', label: 'Lookup in source' }
 ];
 const FILTER_OPERATORS = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with'];
+const FILTER_TYPES = [
+  { value: 'whitelist', label: '✓ Whitelist', color: '#34d399', border: '#064e3b', bg: '#0f1f17' },
+  { value: 'blacklist', label: '✕ Blacklist', color: '#fca5a5', border: '#7f1d1d', bg: '#1f1315' },
+  { value: 'watchlist', label: '🔍 Watch List', color: '#fb923c', border: '#92400e', bg: '#1c1108' }
+];
 
 // =============================================
 // DISCOVERABLE INPUT
@@ -217,7 +222,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
 
   function update(changes) { onUpdate({ ...rule, ...changes }); }
 
-  const severityColor = rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280';
+  const severityColor = rule.severity <= 6 ? '#f87171' : rule.severity <= 12 ? '#fb923c' : '#6b7280';
 
   return (
     <div style={STYLES.ruleCard}>
@@ -227,7 +232,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
           <span style={{
             fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
             backgroundColor: '#1f1315', border: '1px solid #7f1d1d', color: severityColor
-          }}>Priority {rule.severity || 5}</span>
+          }}>Priority {rule.severity || 20}</span>
           {rule.category && (
             <span style={{
               fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
@@ -262,14 +267,14 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         </select>
       </div>
       <div style={STYLES.row}>
-        <span style={STYLES.label}>Priority (1-10)</span>
+        <span style={STYLES.label}>Priority (1-20)</span>
         <input
           style={{ ...STYLES.input, width: '80px', flex: 'none' }}
-          type="number" min="1" max="10"
-          value={rule.severity || 5}
-          onChange={e => update({ severity: parseInt(e.target.value) || 5 })}
+          type="number" min="1" max="20"
+          value={rule.severity || 20}
+          onChange={e => update({ severity: parseInt(e.target.value) || 20 })}
         />
-        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first</span>
+        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first (max 20)</span>
       </div>
       <div style={{ ...STYLES.row, marginBottom: '4px' }}>
         <span style={STYLES.label}>Suppress on match</span>
@@ -384,7 +389,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                     update({ conditions: updated });
                   }}
                   headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
-                  placeholder="Type a value or select a column header..."
+                  placeholder="Value, or separate multiple with ; (e.g. Terminated; Damaged)"
                 />
               </div>
             </>
@@ -546,8 +551,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
         ...assetTypes,
         [newId]: {
           id: newId, name: newName.trim(), description: newDesc.trim(),
-          enabled: true, selectedProcessingSteps: [], selectedRules: [],
-          filters: []
+          enabled: true, selectedProcessingSteps: [], selectedRules: []
         }
       }
     });
@@ -566,7 +570,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
         <div style={STYLES.infoBox}>
           💡 Create your first audit profile to get started. An audit profile defines
           which processing steps and audit rules apply to a specific type of audit.
-          Use the Filters tab to configure whitelist and blacklist rules per profile.
+          Use the Access Rules tab to configure whitelist, blacklist and watch list rules.
         </div>
       )}
 
@@ -622,9 +626,6 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
                     })}
                   </div>
                 )}
-                <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '6px' }}>
-                  {(asset.filters || []).length} filter rule(s) — manage in Filters tab
-                </div>
               </>
             )}
           </div>
@@ -660,41 +661,218 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
 }
 
 // =============================================
+// FILTER CARD
+// =============================================
+function FilterCard({ filter, assetTypes, headers, onUpdate, onRemove }) {
+  const [singleInput, setSingleInput] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
+  const [collapsed, setCollapsed] = useState(false);
+
+  const filterType = FILTER_TYPES.find(t => t.value === filter.type) || FILTER_TYPES[0];
+  const borderColor = filterType.border;
+  const labelColor = filterType.color;
+  const bgColor = filterType.bg;
+  const typeLabel = filterType.label;
+
+  function handleSingleAdd() {
+    if (!singleInput.trim()) return;
+    const trimmed = singleInput.trim();
+    if (filter.values.includes(trimmed)) return;
+    onUpdate({ values: [...filter.values, trimmed] });
+    setSingleInput('');
+  }
+
+  function handleBulkAdd() {
+    if (!bulkInput.trim()) return;
+    const newValues = bulkInput
+      .split(';')
+      .map(v => v.trim())
+      .filter(v => v && !filter.values.includes(v));
+    if (newValues.length === 0) return;
+    onUpdate({ values: [...filter.values, ...newValues] });
+    setBulkInput('');
+  }
+
+  function handleRemoveValue(val) {
+    onUpdate({ values: filter.values.filter(v => v !== val) });
+  }
+
+  function handleToggleProfile(profileId) {
+    const current = filter.profileIds || [];
+    const updated = current.includes(profileId)
+      ? current.filter(id => id !== profileId)
+      : [...current, profileId];
+    onUpdate({ profileIds: updated });
+  }
+
+  const profileKeys = Object.keys(assetTypes);
+  const isAllProfiles = !filter.profileIds || filter.profileIds.length === 0;
+
+  return (
+    <div style={{ ...STYLES.filterCard, borderColor, backgroundColor: bgColor, marginBottom: '12px' }}>
+      <div style={STYLES.filterHeader}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: labelColor }}>{typeLabel}</span>
+          {filter.label && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{filter.label}</span>}
+          <span style={{
+            fontSize: '10px', padding: '1px 6px', borderRadius: '4px',
+            backgroundColor: isAllProfiles ? '#1e1b4b' : '#0c1a2e',
+            border: `1px solid ${isAllProfiles ? '#3730a3' : '#0c4a6e'}`,
+            color: isAllProfiles ? '#a78bfa' : '#38bdf8'
+          }}>
+            {isAllProfiles ? 'All Profiles' : `${filter.profileIds.length} profile(s)`}
+          </span>
+          <span style={{ fontSize: '10px', color: '#4b5563' }}>{filter.values.length} value(s)</span>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
+            onClick={() => setCollapsed(!collapsed)}
+          >{collapsed ? '▼ Expand' : '▲ Collapse'}</button>
+          <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={onRemove}>×</button>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Filter name</span>
+            <input
+              style={STYLES.input}
+              value={filter.label || ''}
+              onChange={e => onUpdate({ label: e.target.value })}
+              placeholder="e.g. Old Laptops, Decommissioned Devices..."
+            />
+          </div>
+
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Column</span>
+            <input
+              style={STYLES.input}
+              value={filter.column || ''}
+              onChange={e => onUpdate({ column: e.target.value })}
+              placeholder="Column to check (e.g. Model, Serial Number, Site...)"
+              list={`filter-headers-${filter.id}`}
+            />
+            <datalist id={`filter-headers-${filter.id}`}>
+              {headers.map(h => <option key={h} value={h} />)}
+            </datalist>
+          </div>
+
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Operator</span>
+            <select
+              style={{ ...STYLES.select, width: '160px', flex: 'none' }}
+              value={filter.operator || 'equals'}
+              onChange={e => onUpdate({ operator: e.target.value })}
+            >
+              {FILTER_OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+            </select>
+          </div>
+
+          <div style={{ marginTop: '12px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '500' }}>
+              Applies to
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
+              <span
+                style={{ ...STYLES.chip, ...(isAllProfiles ? { borderColor: '#6366f1', color: '#6366f1', backgroundColor: '#1e1b4b' } : {}) }}
+                onClick={() => onUpdate({ profileIds: [] })}
+              >
+                🌐 All Profiles
+              </span>
+              {profileKeys.map(key => {
+                const isSelected = (filter.profileIds || []).includes(key);
+                return (
+                  <span
+                    key={key}
+                    style={{ ...STYLES.chip, ...(isSelected ? { borderColor: '#0c4a6e', color: '#38bdf8', backgroundColor: '#0c1a2e' } : {}) }}
+                    onClick={() => handleToggleProfile(key)}
+                  >
+                    {assetTypes[key].name}
+                  </span>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: '10px', color: '#4b5563' }}>
+              "All Profiles" applies this filter to every audit run. Click specific profiles to target only those.
+            </div>
+          </div>
+
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '500' }}>
+              Values ({filter.values.length})
+            </div>
+            <div style={STYLES.tagContainer}>
+              {filter.values.length === 0 && (
+                <span style={{ fontSize: '11px', color: '#4b5563' }}>No values added yet.</span>
+              )}
+              {filter.values.map(val => (
+                <div key={val} style={STYLES.tag}>
+                  <span>{val}</span>
+                  <button style={STYLES.tagRemove} onClick={() => handleRemoveValue(val)}>×</button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <input
+                style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px' }}
+                value={singleInput}
+                onChange={e => setSingleInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSingleAdd()}
+                placeholder="Add single value..."
+              />
+              <button style={STYLES.addBtnSmall} onClick={handleSingleAdd}>+ Add</button>
+            </div>
+
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                Bulk add — separate with semicolons (e.g. HH2-ABC123; HH2-DEF456; ThinkPad T450)
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px' }}
+                  value={bulkInput}
+                  onChange={e => setBulkInput(e.target.value)}
+                  placeholder="Value1; Value2; Value3..."
+                />
+                <button
+                  style={{ ...STYLES.addBtnSmall, backgroundColor: '#374151' }}
+                  onClick={handleBulkAdd}
+                >+ Bulk Add</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============================================
 // FILTERS TAB
 // =============================================
 function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
-  const [selectedProfile, setSelectedProfile] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
-  const [bulkInput, setBulkInput] = useState('');
-  const [bulkType, setBulkType] = useState('whitelist');
 
   const assetTypes = config.assetTypes || {};
-  const profileKeys = Object.keys(assetTypes);
+  const filters = config.filters || [];
   const headers = detectedHeaders ? Object.values(detectedHeaders).flat() : [];
 
-  // Auto-select first profile if only one exists
-  const activeProfile = selectedProfile || profileKeys[0] || '';
-  const profile = assetTypes[activeProfile];
-  const filters = profile?.filters || [];
-
   function updateFilters(newFilters) {
-    onConfigUpdate({
-      ...config,
-      assetTypes: {
-        ...assetTypes,
-        [activeProfile]: { ...assetTypes[activeProfile], filters: newFilters }
-      }
-    });
+    onConfigUpdate({ ...config, filters: newFilters });
   }
 
   function handleAddFilter(type) {
     const newFilter = {
       id: `filter_${Date.now()}`,
-      type, // 'whitelist' or 'blacklist'
+      type,
       column: '',
       operator: 'equals',
       values: [],
-      label: ''
+      label: '',
+      profileIds: []
     };
     updateFilters([...filters, newFilter]);
   }
@@ -707,85 +885,27 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
     updateFilters(filters.filter(f => f.id !== filterId));
   }
 
-  function handleAddValue(filterId, value) {
-    const filter = filters.find(f => f.id === filterId);
-    if (!filter || !value.trim()) return;
-    const trimmed = value.trim();
-    if (filter.values.includes(trimmed)) return;
-    handleUpdateFilter(filterId, { values: [...filter.values, trimmed] });
-  }
-
-  function handleRemoveValue(filterId, value) {
-    const filter = filters.find(f => f.id === filterId);
-    if (!filter) return;
-    handleUpdateFilter(filterId, { values: filter.values.filter(v => v !== value) });
-  }
-
-  function handleBulkAdd(filterId) {
-    const filter = filters.find(f => f.id === filterId);
-    if (!filter || !bulkInput.trim()) return;
-    const newValues = bulkInput
-      .split(';')
-      .map(v => v.trim())
-      .filter(v => v && !filter.values.includes(v));
-    if (newValues.length === 0) return;
-    handleUpdateFilter(filterId, { values: [...filter.values, ...newValues] });
-    setBulkInput('');
-    setSavedMsg(`✓ Added ${newValues.length} value(s)`);
-    setTimeout(() => setSavedMsg(''), 3000);
-  }
-
   function handleSave() {
     onConfigUpdate(config);
     setSavedMsg('✓ Saved');
     setTimeout(() => setSavedMsg(''), 3000);
   }
 
-  if (profileKeys.length === 0) {
-    return (
-      <div style={STYLES.infoBox}>
-        💡 Create an Audit Profile first in the Audit Profiles tab, then come back here to configure its filters.
-      </div>
-    );
-  }
-
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Filters let you whitelist or blacklist rows based on any column condition.
-        Whitelisted rows are always marked Uncategorized regardless of rules.
-        Blacklisted rows are suppressed from the audit entirely.
-        Each audit profile has its own independent filter set.
+        💡 Access Rules control how assets are routed before audit rules run.
+        Each rule targets specific profiles or all profiles. First matching rule wins per asset.<br /><br />
+        <span style={{ color: '#34d399' }}>✓ Whitelist</span> — always marked <strong style={{ color: '#e0e0e0' }}>Uncategorized</strong>, skips all audit rules<br />
+        <span style={{ color: '#fca5a5' }}>✕ Blacklist</span> — <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
+        <span style={{ color: '#fb923c' }}>🔍 Watch List</span> — removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
       </div>
 
-      {/* Profile selector */}
-      {profileKeys.length > 1 && (
-        <div style={{ ...STYLES.row, marginBottom: '20px' }}>
-          <span style={{ ...STYLES.label, width: '140px' }}>Audit Profile</span>
-          <select
-            style={STYLES.select}
-            value={activeProfile}
-            onChange={e => setSelectedProfile(e.target.value)}
-          >
-            {profileKeys.map(key => (
-              <option key={key} value={key}>{assetTypes[key].name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {profileKeys.length === 1 && (
-        <div style={{ fontSize: '13px', color: '#a78bfa', marginBottom: '16px', fontWeight: '500' }}>
-          🎯 {assetTypes[activeProfile]?.name}
-        </div>
-      )}
-
-      {/* Filter cards */}
       {filters.length === 0 && (
         <div style={{ ...STYLES.ruleCard, textAlign: 'center', color: '#6b7280', padding: '32px' }}>
-          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔽</div>
-          <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No filters yet</div>
-          <div style={{ fontSize: '12px' }}>Add a whitelist or blacklist filter below.</div>
+          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🛡</div>
+          <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No access rules yet</div>
+          <div style={{ fontSize: '12px' }}>Add a whitelist, blacklist, or watch list rule below.</div>
         </div>
       )}
 
@@ -793,162 +913,31 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
         <FilterCard
           key={filter.id}
           filter={filter}
+          assetTypes={assetTypes}
           headers={headers}
-          bulkInput={bulkInput}
-          setBulkInput={setBulkInput}
           onUpdate={changes => handleUpdateFilter(filter.id, changes)}
           onRemove={() => handleRemoveFilter(filter.id)}
-          onAddValue={value => handleAddValue(filter.id, value)}
-          onRemoveValue={value => handleRemoveValue(filter.id, value)}
-          onBulkAdd={() => handleBulkAdd(filter.id)}
         />
       ))}
 
-      {/* Add buttons */}
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px' }}
           onClick={() => handleAddFilter('whitelist')}
-        >
-          + Add Whitelist Rule
-        </button>
+        >+ Add Whitelist Rule</button>
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#7f1d1d', border: '1px solid #991b1b' }}
           onClick={() => handleAddFilter('blacklist')}
-        >
-          + Add Blacklist Rule
-        </button>
-        <div style={{ width: '100%', marginTop: '8px', fontSize: '11px', color: '#4b5563', lineHeight: '1.8' }}>
-          <span style={{ color: '#34d399' }}>✓ Whitelist</span> — row passes all rules and is always marked <strong style={{ color: '#e0e0e0' }}>Uncategorized</strong> (excluded from flagging)<br />
-          <span style={{ color: '#fca5a5' }}>✕ Blacklist</span> — row is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from the audit output
-        </div>
+        >+ Add Blacklist Rule</button>
+        <button
+          style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#92400e', border: '1px solid #b45309' }}
+          onClick={() => handleAddFilter('watchlist')}
+        >🔍 Add Watch List Rule</button>
         {filters.length > 0 && (
-          <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save Filters</button>
+          <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save</button>
         )}
       </div>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
-    </div>
-  );
-}
-
-// =============================================
-// FILTER CARD
-// =============================================
-function FilterCard({ filter, headers, bulkInput, setBulkInput, onUpdate, onRemove, onAddValue, onRemoveValue, onBulkAdd }) {
-  const [singleInput, setSingleInput] = useState('');
-  const isWhitelist = filter.type === 'whitelist';
-
-  const borderColor = isWhitelist ? '#064e3b' : '#7f1d1d';
-  const labelColor = isWhitelist ? '#34d399' : '#fca5a5';
-  const bgColor = isWhitelist ? '#0f1f17' : '#1f1315';
-  const typeLabel = isWhitelist ? '✓ Whitelist' : '✕ Blacklist';
-
-  function handleSingleAdd() {
-    if (!singleInput.trim()) return;
-    onAddValue(singleInput.trim());
-    setSingleInput('');
-  }
-
-  return (
-    <div style={{ ...STYLES.filterCard, borderColor, backgroundColor: bgColor }}>
-      <div style={STYLES.filterHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', fontWeight: '600', color: labelColor }}>{typeLabel}</span>
-          {filter.label && (
-            <span style={{ fontSize: '11px', color: '#9ca3af' }}>{filter.label}</span>
-          )}
-        </div>
-        <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={onRemove}>×</button>
-      </div>
-
-      {/* Label */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Filter name</span>
-        <input
-          style={STYLES.input}
-          value={filter.label || ''}
-          onChange={e => onUpdate({ label: e.target.value })}
-          placeholder="e.g. Old Thinkpads, Decommissioned Devices..."
-        />
-      </div>
-
-      {/* Column */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Column</span>
-        <input
-          style={STYLES.input}
-          value={filter.column || ''}
-          onChange={e => onUpdate({ column: e.target.value })}
-          placeholder="Column to check (e.g. Model, Serial Number, Site...)"
-          list={`filter-headers-${filter.id}`}
-        />
-        <datalist id={`filter-headers-${filter.id}`}>
-          {headers.map(h => <option key={h} value={h} />)}
-        </datalist>
-      </div>
-
-      {/* Operator */}
-      <div style={STYLES.row}>
-        <span style={STYLES.label}>Operator</span>
-        <select
-          style={{ ...STYLES.select, width: '160px', flex: 'none' }}
-          value={filter.operator || 'equals'}
-          onChange={e => onUpdate({ operator: e.target.value })}
-        >
-          {FILTER_OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
-        </select>
-      </div>
-
-      {/* Values */}
-      <div style={{ marginTop: '10px' }}>
-        <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '500' }}>
-          Values ({filter.values.length})
-        </div>
-
-        {/* Existing values */}
-        <div style={STYLES.tagContainer}>
-          {filter.values.length === 0 && (
-            <span style={{ fontSize: '11px', color: '#4b5563' }}>No values added yet.</span>
-          )}
-          {filter.values.map(val => (
-            <div key={val} style={STYLES.tag}>
-              <span>{val}</span>
-              <button style={STYLES.tagRemove} onClick={() => onRemoveValue(val)}>×</button>
-            </div>
-          ))}
-        </div>
-
-        {/* Single add */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-          <input
-            style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px' }}
-            value={singleInput}
-            onChange={e => setSingleInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSingleAdd()}
-            placeholder="Add single value..."
-          />
-          <button style={STYLES.addBtnSmall} onClick={handleSingleAdd}>+ Add</button>
-        </div>
-
-        {/* Bulk add */}
-        <div style={{ marginTop: '8px' }}>
-          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
-            Bulk add — separate with semicolons (e.g. HH2-ABC123; HH2-DEF456; ThinkPad T450)
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px' }}
-              value={bulkInput}
-              onChange={e => setBulkInput(e.target.value)}
-              placeholder="Value1; Value2; Value3..."
-            />
-            <button
-              style={{ ...STYLES.addBtnSmall, backgroundColor: '#374151' }}
-              onClick={onBulkAdd}
-            >+ Bulk Add</button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -972,7 +961,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleAddRule() {
     const newRule = {
       id: `rule_${Date.now()}`,
-      name: '', flagReason: '', category: '', severity: 5,
+      name: '', flagReason: '', category: '', severity: 20,
       suppressOnMatch: true, conditions: []
     };
     onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
@@ -1023,7 +1012,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
         </div>
       )}
 
-      {rules.sort((a, b) => (a.severity || 5) - (b.severity || 5)).map(rule => (
+      {rules.sort((a, b) => (a.severity || 20) - (b.severity || 20)).map(rule => (
         <div key={rule.id}>
           {collapsedRules[rule.id] ? (
             <div style={{
@@ -1037,7 +1026,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
                   <span style={{
                     fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
                     backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
-                    color: rule.severity <= 3 ? '#f87171' : rule.severity <= 6 ? '#fb923c' : '#6b7280'
+                    color: rule.severity <= 6 ? '#f87171' : rule.severity <= 12 ? '#fb923c' : '#6b7280'
                   }}>Priority {rule.severity}</span>
                 )}
                 {rule.category && (
@@ -1104,13 +1093,13 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
   const tabs = [
     { id: 'assets', label: '🎯 Audit Profiles' },
     { id: 'rules', label: '🔍 Audit Rules' },
-    { id: 'filters', label: '🔽 Filters' }
+    { id: 'filters', label: '🛡 Access Rules' }
   ];
 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Module Manager</h2>
-      <p style={STYLES.subtitle}>Define audit profiles, build audit rules, and configure filters.</p>
+      <p style={STYLES.subtitle}>Define audit profiles, build audit rules, and configure access rules.</p>
 
       <div style={STYLES.tabs}>
         {tabs.map(tab => (

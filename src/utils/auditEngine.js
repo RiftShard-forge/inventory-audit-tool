@@ -118,8 +118,26 @@ function runProcessingStep(rows, step) {
 
 function applyOperator(sourceValue, operator, compareValue) {
   const src = (sourceValue || '').toString().toLowerCase().trim();
-  const cmp = (compareValue || '').toString().toLowerCase().trim();
 
+  // Check if compareValue contains semicolon-separated values
+  // Applies to operators that compare against a value (not is empty/is not empty/is not found)
+  const multiValueOperators = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with'];
+  if (multiValueOperators.includes(operator) && (compareValue || '').toString().includes(';')) {
+    const values = compareValue.toString().split(';').map(v => v.trim().toLowerCase()).filter(v => v);
+    
+    switch (operator) {
+      case 'equals': return values.some(cmp => src === cmp);
+      case 'is not': return values.every(cmp => src !== cmp);
+      case 'contains': return values.some(cmp => src.includes(cmp));
+      case 'does not contain': return values.every(cmp => !src.includes(cmp));
+      case 'starts with': return values.some(cmp => src.startsWith(cmp));
+      case 'ends with': return values.some(cmp => src.endsWith(cmp));
+      default: return values.some(cmp => src === cmp);
+    }
+  }
+
+  // Single value — original behavior
+  const cmp = (compareValue || '').toString().toLowerCase().trim();
   switch (operator) {
     case 'equals': return src === cmp;
     case 'is not': return src !== cmp;
@@ -262,8 +280,15 @@ function evaluateRule(rule, row, allSources) {
 // MAIN AUDIT FUNCTION
 // =================================================================
 
-export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw) {
-  const { selectedRules = [], filters = [] } = assetTypeConfig;
+export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw, globalFilters = []) {
+  const { selectedRules = [] } = assetTypeConfig;
+  const profileId = assetTypeConfig.id || '';
+
+  // Get applicable filters for this profile
+  // A filter applies if profileIds is empty (all profiles) or contains this profile's id
+  const filters = globalFilters.filter(f =>
+    !f.profileIds || f.profileIds.length === 0 || f.profileIds.includes(profileId)
+  );
 
   // STEP 1: Get applicable rules sorted by severity
   const applicableRules = auditRules
@@ -317,6 +342,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
   const byCategory = {};
   const clean = [];
   const blacklisted = [];
+  const underInvestigation = [];
 
   processedRows.forEach(row => {
 
@@ -330,6 +356,11 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
 
     if (filterResult === 'blacklist') {
       blacklisted.push({ ...row, '_Audit Reason': 'Suppressed - Blacklisted' });
+      return;
+    }
+
+    if (filterResult === 'watchlist') {
+      underInvestigation.push({ ...row, '_Audit Reason': 'Under Investigation' });
       return;
     }
 
@@ -384,6 +415,7 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     totalProcessed: processedRows.length,
     totalFlagged,
     totalBlacklisted: blacklisted.length,
+    totalUnderInvestigation: underInvestigation.length,
     totalClean: clean.length,
     byCategory: Object.keys(byCategory).reduce((acc, cat) => {
       acc[cat] = byCategory[cat].length;
@@ -391,5 +423,5 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     }, {})
   };
 
-  return { byCategory, blacklisted, clean, summary, categorySeverity };
+  return { byCategory, blacklisted, clean, underInvestigation, summary, categorySeverity };
 }

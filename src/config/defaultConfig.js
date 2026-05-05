@@ -7,7 +7,7 @@ export const defaultConfig = {
   // PROCESSING STEPS
   // User-defined data transformation steps.
   // Run before audit rules to normalize/clean data.
-  // Types: 'mapValue', 'stripText', 'tagByValue'
+  // Types: 'mapValue', 'stripText', 'tagByValue', 'deduplicateRows', 'conditionalMap'
   // =================================================================
   processingSteps: [],
 
@@ -28,6 +28,14 @@ export const defaultConfig = {
   // User-defined. Each selects processing steps + audit rules.
   // =================================================================
   assetTypes: {},
+
+  // =================================================================
+  // FILTERS
+  // Global pool of whitelist/blacklist/watchlist rules.
+  // Each filter targets specific profiles via profileIds[].
+  // Empty profileIds = applies to ALL profiles.
+  // =================================================================
+  filters: [],
 
   // =================================================================
   // RUN HISTORY
