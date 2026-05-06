@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { runAudit } from '../utils/auditEngine';
 import { exportToExcel } from '../utils/exportExcel';
-import { addToHistory } from '../config/configManager';
+import { addToHistory, loadConfig } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -195,7 +195,8 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
       const outputIdentifiers = new Set([
         ...Object.values(auditResults.byCategory).flat(),
         ...auditResults.clean,
-        ...auditResults.blacklisted
+        ...auditResults.blacklisted,
+        ...(auditResults.underInvestigation || [])
       ].map(row => (
         row['Serial Number'] || row['Serial'] || row['Computer'] || row['Asset Tag'] || ''
       ).trim().toLowerCase()));
@@ -219,6 +220,10 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         totalProcessed: auditResults.summary.totalProcessed,
         byCategory: auditResults.summary.byCategory
       });
+
+      // Sync React state with updated history from localStorage
+      const updatedConfig = loadConfig();
+      onConfigUpdate(updatedConfig);
 
     } catch (e) {
       setError(`Audit failed: ${e.message}`);
@@ -416,6 +421,19 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
                 </span>
               </div>
               <PreviewTable rows={results.clean} maxRows={3} />
+            </div>
+          )}
+
+          {/* Under Investigation preview */}
+          {results.underInvestigation && results.underInvestigation.length > 0 && (
+            <div style={STYLES.categoryCard}>
+              <div style={STYLES.categoryHeader}>
+                <span style={{ ...STYLES.categoryName, color: '#fb923c' }}>🔍 Under Investigation</span>
+                <span style={{ ...STYLES.categoryCount, backgroundColor: '#1c1108', borderColor: '#92400e', color: '#fb923c' }}>
+                  {results.underInvestigation.length} asset{results.underInvestigation.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <PreviewTable rows={results.underInvestigation} maxRows={3} />
             </div>
           )}
 

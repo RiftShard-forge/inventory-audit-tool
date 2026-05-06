@@ -102,9 +102,9 @@ const COMPARE_TYPES = [
 ];
 const FILTER_OPERATORS = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with'];
 const FILTER_TYPES = [
-  { value: 'whitelist', label: '✓ Whitelist', color: '#34d399', border: '#064e3b', bg: '#0f1f17' },
-  { value: 'blacklist', label: '✕ Blacklist', color: '#fca5a5', border: '#7f1d1d', bg: '#1f1315' },
-  { value: 'watchlist', label: '🔍 Watch List', color: '#fb923c', border: '#92400e', bg: '#1c1108' }
+  { value: 'whitelist', label: '✓ Uncategorized Rule', color: '#34d399', border: '#064e3b', bg: '#0f1f17' },
+  { value: 'blacklist', label: '✕ Suppression Rule', color: '#fca5a5', border: '#7f1d1d', bg: '#1f1315' },
+  { value: 'watchlist', label: '🔍 Investigation Rule', color: '#fb923c', border: '#92400e', bg: '#1c1108' }
 ];
 
 // =============================================
@@ -896,9 +896,9 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
       <div style={STYLES.infoBox}>
         💡 Access Rules control how assets are routed before audit rules run.
         Each rule targets specific profiles or all profiles. First matching rule wins per asset.<br /><br />
-        <span style={{ color: '#34d399' }}>✓ Whitelist</span> — always marked <strong style={{ color: '#e0e0e0' }}>Uncategorized</strong>, skips all audit rules<br />
-        <span style={{ color: '#fca5a5' }}>✕ Blacklist</span> — <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
-        <span style={{ color: '#fb923c' }}>🔍 Watch List</span> — removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
+        <span style={{ color: '#34d399' }}>✓ Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Uncategorized</strong> tab<br />
+        <span style={{ color: '#fca5a5' }}>✕ Suppression Rule</span> — asset is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
+        <span style={{ color: '#fb923c' }}>🔍 Investigation Rule</span> — asset removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
       </div>
 
       {filters.length === 0 && (
@@ -924,15 +924,15 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px' }}
           onClick={() => handleAddFilter('whitelist')}
-        >+ Add Whitelist Rule</button>
+        >+ Add Uncategorized Rule</button>
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#7f1d1d', border: '1px solid #991b1b' }}
           onClick={() => handleAddFilter('blacklist')}
-        >+ Add Blacklist Rule</button>
+        >+ Add Suppression Rule</button>
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#92400e', border: '1px solid #b45309' }}
           onClick={() => handleAddFilter('watchlist')}
-        >🔍 Add Watch List Rule</button>
+        >🔍 Add Investigation Rule</button>
         {filters.length > 0 && (
           <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save</button>
         )}

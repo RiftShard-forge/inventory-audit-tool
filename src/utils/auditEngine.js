@@ -71,7 +71,12 @@ function runProcessingStep(rows, step) {
     }
 
     case 'deduplicateRows': {
-      const { deduplicateBy = '', dateColumn = '' } = stepConfig;
+      const {
+        deduplicateBy = '',
+        dateColumn = '',
+        tiebreakerColumn = '',
+        tiebreakerValue = ''
+      } = stepConfig;
       if (!deduplicateBy || !dateColumn) return rows;
 
       const seen = new Map();
@@ -84,7 +89,17 @@ function runProcessingStep(rows, step) {
         } else {
           const existingDate = new Date(existing[dateColumn] || 0);
           const currentDate = new Date(row[dateColumn] || 0);
-          if (currentDate > existingDate) seen.set(key, row);
+          if (currentDate > existingDate) {
+            seen.set(key, row);
+          } else if (
+            currentDate.getTime() === existingDate.getTime() &&
+            tiebreakerColumn && tiebreakerValue
+          ) {
+            // Same date — use tiebreaker: prefer row where tiebreakerColumn matches tiebreakerValue
+            const currentVal = (row[tiebreakerColumn] || '').toLowerCase().trim();
+            const preferredVal = tiebreakerValue.toLowerCase().trim();
+            if (currentVal === preferredVal) seen.set(key, row);
+          }
         }
       });
       return Array.from(seen.values());

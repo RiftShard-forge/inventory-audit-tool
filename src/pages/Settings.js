@@ -274,8 +274,9 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.infoBox}>
             Removes duplicate rows keeping the one with the most recent date.
-            Use this on sources like Rippling where rehired employees appear twice
-            with the same email — the newest profile will be kept.
+            If two rows share the same date, the optional tiebreaker picks the winner
+            by preferring the row where a column matches a specific value
+            (e.g. prefer "Active" over "Terminated" when start dates are equal).
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Deduplicate by</span>
@@ -298,6 +299,29 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
               list={`headers-date-${step.id}`}
             />
             <datalist id={`headers-date-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={{ fontSize: '11px', color: '#6b7280', margin: '8px 0 6px', fontWeight: '500' }}>
+            Tiebreaker — optional, used when two rows share the same date
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Tiebreaker column</span>
+            <input
+              style={STYLES.input}
+              value={step.config.tiebreakerColumn || ''}
+              onChange={e => updateConfig({ tiebreakerColumn: e.target.value })}
+              placeholder="Column to check when dates tie (e.g. Employment status)"
+              list={`headers-tiebreak-${step.id}`}
+            />
+            <datalist id={`headers-tiebreak-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Prefer value</span>
+            <input
+              style={STYLES.input}
+              value={step.config.tiebreakerValue || ''}
+              onChange={e => updateConfig({ tiebreakerValue: e.target.value })}
+              placeholder="Value to prefer in tiebreaker column (e.g. Active)"
+            />
           </div>
         </div>
       )}
@@ -404,7 +428,7 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
       type === 'mapValue' ? { mappings: {} } :
       type === 'stripText' ? { textToStrip: '' } :
       type === 'tagByValue' ? { tagColumn: '_tag', valueTags: {} } :
-      type === 'deduplicateRows' ? { deduplicateBy: '', dateColumn: '' } :
+      type === 'deduplicateRows' ? { deduplicateBy: '', dateColumn: '', tiebreakerColumn: '', tiebreakerValue: '' } :
       type === 'conditionalMap' ? { operator: 'contains', matchValue: '', targetColumn: '', targetValue: '' } :
       {};
 
@@ -610,9 +634,10 @@ function CategoriesTab({ config, onConfigUpdate }) {
 // =============================================
 function ResetTab() {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [resetLibraryToo, setResetLibraryToo] = useState(false);
 
   function handleReset() {
-    resetConfig();
+    resetConfig(resetLibraryToo);
     window.location.reload();
   }
 
@@ -621,12 +646,31 @@ function ResetTab() {
       <div style={STYLES.sectionTitle}>Reset Configuration</div>
       <p style={STYLES.sectionDesc}>
         Clears all saved settings — audit profiles, audit rules, processing steps,
-        categories, and run history. Cannot be undone. Your library is preserved.
+        categories, and run history. Cannot be undone.
       </p>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '16px' }}>
+        <input
+          type="checkbox"
+          checked={resetLibraryToo}
+          onChange={e => setResetLibraryToo(e.target.checked)}
+          style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1' }}
+        />
+        <div>
+          <div style={{ fontSize: '13px', color: '#e0e0e0', fontWeight: '500' }}>Also reset library</div>
+          <div style={{ fontSize: '11px', color: '#6b7280' }}>
+            By default the library is preserved on reset. Check this to wipe it too.
+          </div>
+        </div>
+      </label>
+
       <button style={STYLES.dangerBtn} onClick={() => setShowConfirm(true)}>⚠ Reset All Settings</button>
       {showConfirm && (
         <div style={STYLES.confirmBox}>
-          <p style={STYLES.confirmText}>Are you sure? This cannot be undone.</p>
+          <p style={STYLES.confirmText}>
+            Are you sure? This cannot be undone.
+            {resetLibraryToo && <strong> Your library will also be permanently deleted.</strong>}
+          </p>
           <div style={STYLES.confirmBtns}>
             <button style={STYLES.confirmYes} onClick={handleReset}>Yes, reset everything</button>
             <button style={STYLES.confirmNo} onClick={() => setShowConfirm(false)}>Cancel</button>
