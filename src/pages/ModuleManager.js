@@ -2,7 +2,7 @@
 // Unauthorized copying, distribution, or use is strictly prohibited.
 
 import React, { useState } from 'react';
-import { addToRuleHistory } from '../config/configManager';
+import { addToRuleHistory, addToFilterHistory } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '1000px' },
@@ -663,7 +663,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
 // =============================================
 // FILTER CARD
 // =============================================
-function FilterCard({ filter, assetTypes, headers, onUpdate, onRemove }) {
+function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpdate, onRemove }) {
   const [singleInput, setSingleInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [collapsed, setCollapsed] = useState(false);
@@ -725,6 +725,12 @@ function FilterCard({ filter, assetTypes, headers, onUpdate, onRemove }) {
           <span style={{ fontSize: '10px', color: '#4b5563' }}>{filter.values.length} value(s)</span>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={checked || false}
+            onChange={onToggleCheck}
+            style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+          />
           <button
             style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
             onClick={() => setCollapsed(!collapsed)}
@@ -885,6 +891,27 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
     updateFilters(filters.filter(f => f.id !== filterId));
   }
 
+  const [checkedFilters, setCheckedFilters] = useState([]);
+
+  function handleToggleCheck(filterId) {
+    setCheckedFilters(prev =>
+      prev.includes(filterId) ? prev.filter(id => id !== filterId) : [...prev, filterId]
+    );
+  }
+
+  function handleSaveToLibrary() {
+    const toSave = filters.filter(f => checkedFilters.includes(f.id) && f.label);
+    if (toSave.length === 0) {
+      setSavedMsg('⚠ No rules selected. Add a filter name and check the box first.');
+      setTimeout(() => setSavedMsg(''), 3000);
+      return;
+    }
+    toSave.forEach(filter => addToFilterHistory(filter));
+    setSavedMsg(`✓ ${toSave.length} access rule(s) saved to library`);
+    setCheckedFilters([]);
+    setTimeout(() => setSavedMsg(''), 3000);
+  }
+
   function handleSave() {
     onConfigUpdate(config);
     setSavedMsg('✓ Saved');
@@ -896,7 +923,7 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
       <div style={STYLES.infoBox}>
         💡 Access Rules control how assets are routed before audit rules run.
         Each rule targets specific profiles or all profiles. First matching rule wins per asset.<br /><br />
-        <span style={{ color: '#34d399' }}>✓ Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Uncategorized</strong> tab<br />
+        <span style={{ color: '#34d399' }}>✓ Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Clean</strong> tab<br />
         <span style={{ color: '#fca5a5' }}>✕ Suppression Rule</span> — asset is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
         <span style={{ color: '#fb923c' }}>🔍 Investigation Rule</span> — asset removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
       </div>
@@ -915,6 +942,8 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
           filter={filter}
           assetTypes={assetTypes}
           headers={headers}
+          checked={checkedFilters.includes(filter.id)}
+          onToggleCheck={() => handleToggleCheck(filter.id)}
           onUpdate={changes => handleUpdateFilter(filter.id, changes)}
           onRemove={() => handleRemoveFilter(filter.id)}
         />
@@ -935,6 +964,12 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
         >🔍 Add Investigation Rule</button>
         {filters.length > 0 && (
           <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save</button>
+        )}
+        {filters.length > 0 && (
+          <button
+            style={{ ...STYLES.saveBtn, marginTop: '0', backgroundColor: '#0c1a2e', border: '1px solid #0c4a6e', color: '#38bdf8' }}
+            onClick={handleSaveToLibrary}
+          >★ Save checked to Library</button>
         )}
       </div>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}

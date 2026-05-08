@@ -49,9 +49,9 @@ function toSummarySheet(assetName, summary, timestamp) {
     ['Category', 'Count'],
     ...Object.entries(summary.byCategory).map(([cat, count]) => [cat, count]),
     [''],
-    ['Suppressed (Blacklisted)', summary.totalBlacklisted],
+    ['Suppressed', summary.totalBlacklisted],
     ['Under Investigation', summary.totalUnderInvestigation || 0],
-    ['Uncategorized', summary.totalClean],
+    ['Clean', summary.totalClean],
     [''],
     ['Total Processed', summary.totalProcessed],
     ['Total Flagged', summary.totalFlagged],
@@ -117,11 +117,11 @@ export function exportToExcel(assetName, results) {
     );
   }
 
-  // Uncategorized tab (formerly Clean)
+  // Clean tab
   XLSX.utils.book_append_sheet(
     wb,
     toWorksheet(results.clean, false),
-    'Uncategorized'
+    'Clean'
   );
 
   // Unaccounted tab — only added if Safety Net found dropped assets

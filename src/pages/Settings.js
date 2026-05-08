@@ -2,7 +2,7 @@
 // Unauthorized copying, distribution, or use is strictly prohibited.
 
 import React, { useState, useEffect } from 'react';
-import { resetConfig, exportConfig, importConfig, addToCategoryHistory, addToStepHistory, loadLibrary, deleteFromRuleHistory, deleteFromCategoryHistory, deleteFromStepHistory } from '../config/configManager';
+import { resetConfig, exportConfig, importConfig, addToCategoryHistory, addToStepHistory, loadLibrary, deleteFromRuleHistory, deleteFromCategoryHistory, deleteFromStepHistory, deleteFromFilterHistory } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -727,7 +727,7 @@ function ConfigTab({ config, onConfigUpdate }) {
 // LIBRARY TAB
 // =============================================
 function LibraryTab({ config, onConfigUpdate }) {
-  const [library, setLibrary] = useState({ ruleHistory: [], categoryHistory: [], stepHistory: [] });
+  const [library, setLibrary] = useState({ ruleHistory: [], categoryHistory: [], stepHistory: [], filterHistory: [] });
   const [savedMsg, setSavedMsg] = useState('');
 
   useEffect(() => {
@@ -770,7 +770,19 @@ function LibraryTab({ config, onConfigUpdate }) {
     setLibrary(prev => ({ ...prev, stepHistory: prev.stepHistory.filter(s => s.name !== name) }));
   }
 
-  const isEmpty = library.ruleHistory.length === 0 && library.categoryHistory.length === 0 && library.stepHistory.length === 0;
+  function handleDeleteFilter(label) {
+    deleteFromFilterHistory(label);
+    setLibrary(prev => ({ ...prev, filterHistory: (prev.filterHistory || []).filter(f => f.label !== label) }));
+  }
+
+  function handleRestoreFilter(filter) {
+    const restored = { ...filter, id: `filter_${Date.now()}` };
+    onConfigUpdate({ ...config, filters: [...(config.filters || []), restored] });
+    setSavedMsg(`✓ Access rule "${filter.label}" restored`);
+    setTimeout(() => setSavedMsg(''), 3000);
+  }
+
+  const isEmpty = library.ruleHistory.length === 0 && library.categoryHistory.length === 0 && library.stepHistory.length === 0 && (library.filterHistory || []).length === 0;
 
   return (
     <div>
@@ -843,6 +855,41 @@ function LibraryTab({ config, onConfigUpdate }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {(library.filterHistory || []).length > 0 && (
+        <div style={STYLES.section}>
+          <div style={STYLES.sectionTitle}>🛡 Saved Access Rules</div>
+          <p style={STYLES.sectionDesc}>Click Restore to add an access rule back to the Access Rules tab.</p>
+          {(library.filterHistory || []).map((filter, idx) => {
+            const typeColors = {
+              whitelist: '#34d399',
+              blacklist: '#fca5a5',
+              watchlist: '#fb923c'
+            };
+            const typeLabels = {
+              whitelist: '✓ Uncategorized Rule',
+              blacklist: '✕ Suppression Rule',
+              watchlist: '🔍 Investigation Rule'
+            };
+            return (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', marginBottom: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', color: typeColors[filter.type] || '#ffffff', fontWeight: '500' }}>
+                    {typeLabels[filter.type] || filter.type} — {filter.label || 'Unnamed'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                    {filter.column || 'No column'} · {filter.operator || 'equals'} · {(filter.values || []).length} value(s)
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button style={{ ...STYLES.addBtn, padding: '5px 12px', fontSize: '12px' }} onClick={() => handleRestoreFilter(filter)}>+ Restore</button>
+                  <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={() => handleDeleteFilter(filter.label)}>×</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

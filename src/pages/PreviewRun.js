@@ -348,7 +348,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
               <div style={{ ...STYLES.statNumber, color: '#34d399' }}>
                 {results.summary.totalClean}
               </div>
-              <div style={STYLES.statLabel}>Uncategorized</div>
+              <div style={STYLES.statLabel}>Clean</div>
             </div>
             <div style={STYLES.statCard}>
               <div style={{ ...STYLES.statNumber, color: '#f87171' }}>
@@ -411,11 +411,11 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
               </div>
             ))}
 
-          {/* Uncategorized preview (formerly Clean) */}
+          {/* Clean preview */}
           {results.clean.length > 0 && (
             <div style={STYLES.categoryCard}>
               <div style={STYLES.categoryHeader}>
-                <span style={{ ...STYLES.categoryName, color: '#34d399' }}>Uncategorized</span>
+                <span style={{ ...STYLES.categoryName, color: '#34d399' }}>Clean</span>
                 <span style={{ ...STYLES.categoryCount, backgroundColor: '#0f1f17', borderColor: '#064e3b', color: '#34d399' }}>
                   {results.clean.length} asset{results.clean.length !== 1 ? 's' : ''}
                 </span>

@@ -194,7 +194,8 @@ export function importConfig(file) {
           _saveLibrary({
             ruleHistory: parsed._library.ruleHistory || [],
             categoryHistory: parsed._library.categoryHistory || [],
-            stepHistory: parsed._library.stepHistory || []
+            stepHistory: parsed._library.stepHistory || [],
+            filterHistory: parsed._library.filterHistory || []
           });
         }
 
@@ -232,8 +233,8 @@ export function loadLibrary() {
   try {
     const stored = localStorage.getItem(LIBRARY_KEY);
     return stored
-      ? JSON.parse(stored)
-      : { ruleHistory: [], categoryHistory: [], stepHistory: [] };
+      ? { ruleHistory: [], categoryHistory: [], stepHistory: [], filterHistory: [], ...JSON.parse(stored) }
+      : { ruleHistory: [], categoryHistory: [], stepHistory: [], filterHistory: [] };
   } catch (e) {
     console.error('Failed to load library:', e);
     return { ruleHistory: [], categoryHistory: [], stepHistory: [] };
@@ -315,6 +316,29 @@ export function deleteFromStepHistory(name) {
     return _saveLibrary(library);
   } catch (e) {
     console.error('Failed to delete step from library:', e);
+    return false;
+  }
+}
+
+export function addToFilterHistory(filter) {
+  try {
+    const library = loadLibrary();
+    const filtered = (library.filterHistory || []).filter(f => f.label !== filter.label);
+    library.filterHistory = [filter, ...filtered].slice(0, 20);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to save filter to library:', e);
+    return false;
+  }
+}
+
+export function deleteFromFilterHistory(label) {
+  try {
+    const library = loadLibrary();
+    library.filterHistory = (library.filterHistory || []).filter(f => f.label !== label);
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to delete filter from library:', e);
     return false;
   }
 }
