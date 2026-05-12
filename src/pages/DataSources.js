@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { parseCsv } from '../utils/auditEngine';
+import * as XLSX from 'xlsx';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -26,6 +27,8 @@ const STYLES = {
   },
   dropzoneActive: { borderColor: '#6366f1', backgroundColor: '#1e1f35' },
   dropzoneLoaded: { borderColor: '#064e3b', backgroundColor: '#0a1a10' },
+  dropzoneDelta: { borderColor: '#92400e', backgroundColor: '#1c1108' },
+  dropzoneDeltaLoaded: { borderColor: '#b45309', backgroundColor: '#1c1108' },
   headerPills: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '10px' },
   headerPill: {
     fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
@@ -65,6 +68,11 @@ const STYLES = {
     borderRadius: '20px', border: '1px solid',
     color: '#34d399', borderColor: '#064e3b', backgroundColor: '#0f1f17'
   },
+  badgeDelta: {
+    fontSize: '11px', fontWeight: '500', padding: '3px 10px',
+    borderRadius: '20px', border: '1px solid',
+    color: '#fb923c', borderColor: '#92400e', backgroundColor: '#1c1108'
+  },
   rowCount: { fontSize: '11px', color: '#6b7280', marginTop: '6px' },
   divider: { border: 'none', borderTop: '1px solid #2a2d3e', margin: '14px 0' },
   chip: {
@@ -73,22 +81,140 @@ const STYLES = {
     cursor: 'pointer', display: 'inline-block', margin: '3px'
   },
   chipActive: { borderColor: '#0c4a6e', color: '#38bdf8', backgroundColor: '#0c1a2e' },
-  stepsLabel: { fontSize: '11px', color: '#38bdf8', marginBottom: '6px', fontWeight: '500' }
+  stepsLabel: { fontSize: '11px', color: '#38bdf8', marginBottom: '6px', fontWeight: '500' },
+  errorMsg: { fontSize: '11px', color: '#fca5a5', marginTop: '6px' }
 };
 
-function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSteps }) {
-  const [active, setActive] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const isLoaded = !!source.file;
+const ACCEPTED_TYPES = '.csv,.xlsx,.xls,.txt,.tsv';
 
-  function handleFile(file) {
-    if (!file || !file.name.endsWith('.csv')) return;
+// Parse any supported file format into { header, rows }
+function parseFile(file, callback) {
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith('.csv') || name.endsWith('.txt') || name.endsWith('.tsv')) {
     const reader = new FileReader();
     reader.onload = e => {
-      const { header, rows } = parseCsv(e.target.result);
-      onFileLoad(source.id, file.name, header, rows);
+      const text = e.target.result;
+      const firstLine = text.split(/\r?\n/)[0] || '';
+      const delimiter = firstLine.includes('\t') ? '\t' : ',';
+
+      if (delimiter === '\t') {
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        if (lines.length < 2) return callback(null, 'File has no data rows');
+        const header = lines[0].split('\t').map(h => h.replace(/^"|"$/g, '').trim());
+        const rows = lines.slice(1).map(line => {
+          const values = line.split('\t').map(v => v.replace(/^"|"$/g, '').trim());
+          const obj = {};
+          header.forEach((h, i) => { obj[h] = values[i] || ''; });
+          return obj;
+        });
+        callback({ header, rows });
+      } else {
+        callback(parseCsv(text));
+      }
     };
+    reader.onerror = () => callback(null, 'Failed to read file');
     reader.readAsText(file);
+    return;
+  }
+
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const workbook = XLSX.read(e.target.result, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        if (!json || json.length === 0) return callback(null, 'No data found in file');
+        const header = Object.keys(json[0]);
+        const rows = json.map(row => {
+          const obj = {};
+          header.forEach(h => { obj[h] = (row[h] || '').toString(); });
+          return obj;
+        });
+        callback({ header, rows });
+      } catch (err) {
+        callback(null, 'Failed to parse Excel file');
+      }
+    };
+    reader.onerror = () => callback(null, 'Failed to read file');
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  callback(null, 'Unsupported file type');
+}
+
+// Parse previous audit xlsx — reads ALL sheets and returns { sheetName: rows[] }
+function parsePreviousAudit(file, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const workbook = XLSX.read(e.target.result, { type: 'array' });
+      const sheets = {};
+      let auditDate = null;
+
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        sheets[sheetName] = json.map(row =>
+          Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v.toString()]))
+        );
+
+        // Extract audit date from Summary sheet
+        if (sheetName === 'Summary') {
+          const dateRow = json.find(row =>
+            Object.values(row).some(v => v.toString().includes('Run Date'))
+          );
+          if (dateRow) {
+            const vals = Object.values(dateRow);
+            const idx = vals.findIndex(v => v.toString().includes('Run Date'));
+            if (idx !== -1 && vals[idx + 1]) auditDate = vals[idx + 1].toString();
+          }
+          // Also try direct cell approach
+          if (!auditDate) {
+            json.forEach(row => {
+              const entries = Object.entries(row);
+              entries.forEach(([k, v], i) => {
+                if (v.toString() === 'Run Date' && entries[i + 1]) {
+                  auditDate = entries[i + 1][1].toString();
+                }
+              });
+            });
+          }
+        }
+      });
+
+      callback({ sheets, auditDate, fileName: file.name });
+    } catch (err) {
+      callback(null, 'Failed to parse previous audit file');
+    }
+  };
+  reader.onerror = () => callback(null, 'Failed to read file');
+  reader.readAsArrayBuffer(file);
+}
+
+// =============================================
+// PREVIOUS AUDIT DROP ZONE
+// =============================================
+function PreviousAuditCard({ previousAudit, onLoad, onRemove }) {
+  const [active, setActive] = useState(false);
+  const [error, setError] = useState('');
+  const isLoaded = !!previousAudit;
+
+  function handleFile(file) {
+    if (!file) return;
+    setError('');
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+      setError('Previous audit must be an .xlsx or .xls file exported from this tool');
+      return;
+    }
+    parsePreviousAudit(file, (result, err) => {
+      if (err) { setError(err); return; }
+      onLoad(result);
+    });
   }
 
   function handleDrop(e) {
@@ -97,18 +223,135 @@ function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSt
     handleFile(e.dataTransfer.files[0]);
   }
 
+  const sheetCount = previousAudit ? Object.keys(previousAudit.sheets).length : 0;
+
+  return (
+    <div style={{
+      ...STYLES.card,
+      border: isLoaded ? '1px solid #92400e' : '2px dashed #92400e',
+      backgroundColor: isLoaded ? '#1c1108' : 'transparent',
+      marginBottom: '24px'
+    }}>
+      <div style={STYLES.cardHeader}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fb923c' }}>
+            🔄 Previous Audit — Delta Reference
+          </div>
+          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+            Optional — upload to enable delta detection against Access Rules
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isLoaded && <span style={STYLES.badgeDelta}>Loaded</span>}
+          {isLoaded && (
+            <button
+              style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }}
+              onClick={onRemove}
+            >×</button>
+          )}
+        </div>
+      </div>
+
+      <div
+        style={{
+          ...STYLES.dropzone,
+          ...(active ? STYLES.dropzoneActive : {}),
+          ...(isLoaded ? STYLES.dropzoneDeltaLoaded : STYLES.dropzoneDelta)
+        }}
+        onDragOver={e => { e.preventDefault(); setActive(true); }}
+        onDragLeave={() => setActive(false)}
+        onDrop={handleDrop}
+        onClick={() => document.getElementById('file-previous-audit').click()}
+      >
+        <div style={{ fontSize: '28px', marginBottom: '6px' }}>
+          {isLoaded ? '✓' : '🔄'}
+        </div>
+        <div style={{ fontSize: '12px', color: isLoaded ? '#fb923c' : '#6b7280' }}>
+          {isLoaded ? previousAudit.fileName : 'Drop previous audit .xlsx here or click to browse'}
+        </div>
+        {!isLoaded && (
+          <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '4px' }}>
+            Must be an .xlsx exported from this tool
+          </div>
+        )}
+        <input
+          id="file-previous-audit"
+          type="file"
+          accept=".xlsx,.xls"
+          style={{ display: 'none' }}
+          onChange={e => handleFile(e.target.files[0])}
+        />
+      </div>
+
+      {error && <div style={STYLES.errorMsg}>⚠ {error}</div>}
+
+      {isLoaded && (
+        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
+          {sheetCount} tabs found
+          {previousAudit.auditDate && (
+            <span style={{ color: '#fb923c', marginLeft: '8px' }}>
+              · Run date: {previousAudit.auditDate}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// DROPZONE CARD
+// =============================================
+function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSteps }) {
+  const [active, setActive] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [error, setError] = useState('');
+  const isLoaded = !!source.file;
+
+  function handleFile(file) {
+    if (!file) return;
+    setError('');
+    parseFile(file, (result, err) => {
+      if (err) { setError(err); return; }
+      if (!result || !result.header || result.header.length === 0) {
+        setError('No headers detected in file'); return;
+      }
+      if (!result.rows || result.rows.length === 0) {
+        setError('No data rows found in file'); return;
+      }
+      onFileLoad(source.id, file.name, result.header, result.rows);
+    });
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setActive(false);
+    handleFile(e.dataTransfer.files[0]);
+  }
+
+  function getFileTypeBadge(fileName) {
+    if (!fileName) return '';
+    const ext = fileName.split('.').pop().toLowerCase();
+    const labels = { csv: 'CSV', xlsx: 'XLSX', xls: 'XLS', txt: 'TXT', tsv: 'TSV' };
+    return labels[ext] || ext.toUpperCase();
+  }
+
   return (
     <div style={isLoaded ? STYLES.cardLoaded : STYLES.card}>
       <div style={STYLES.cardHeader}>
         <span style={STYLES.cardTitle}>{source.name}</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isLoaded && (
+            <span style={{ ...STYLES.badge, fontSize: '10px', padding: '2px 6px' }}>
+              {getFileTypeBadge(source.fileName)}
+            </span>
+          )}
           {isLoaded && <span style={STYLES.badge}>Loaded</span>}
           {isLoaded && (
             <button
               style={{
                 background: 'none', border: '1px solid #2a2d3e', color: '#6b7280',
-                cursor: 'pointer', fontSize: '11px', borderRadius: '4px',
-                padding: '3px 8px'
+                cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px'
               }}
               onClick={() => setCollapsed(!collapsed)}
             >
@@ -136,16 +379,23 @@ function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSt
               {isLoaded ? '✓' : '📂'}
             </div>
             <div style={{ fontSize: '12px', color: isLoaded ? '#34d399' : '#6b7280' }}>
-              {isLoaded ? source.fileName : 'Drop CSV here or click to browse'}
+              {isLoaded ? source.fileName : 'Drop file here or click to browse'}
             </div>
+            {!isLoaded && (
+              <div style={{ fontSize: '10px', color: '#4b5563', marginTop: '4px' }}>
+                Supports CSV, XLSX, XLS, TXT, TSV
+              </div>
+            )}
             <input
               id={`file-${source.id}`}
               type="file"
-              accept=".csv"
+              accept={ACCEPTED_TYPES}
               style={{ display: 'none' }}
               onChange={e => handleFile(e.target.files[0])}
             />
           </div>
+
+          {error && <div style={STYLES.errorMsg}>⚠ {error}</div>}
 
           {isLoaded && (
             <>
@@ -206,7 +456,10 @@ function DropzoneCard({ source, onFileLoad, onRemove, onStepToggle, processingSt
   );
 }
 
-export default function DataSources({ dataSources, onDataSourcesUpdate, processingSteps }) {
+// =============================================
+// MAIN COMPONENT
+// =============================================
+export default function DataSources({ dataSources, onDataSourcesUpdate, processingSteps, previousAudit, onPreviousAuditUpdate }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
 
@@ -259,15 +512,22 @@ export default function DataSources({ dataSources, onDataSourcesUpdate, processi
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Data Sources</h2>
       <p style={STYLES.subtitle}>
-        Add your data sources, drop in CSV exports, and select which
+        Add your data sources, drop in your files, and select which
         processing steps apply to each source.
       </p>
+
+      {/* Previous Audit Delta Reference */}
+      <PreviousAuditCard
+        previousAudit={previousAudit}
+        onLoad={onPreviousAuditUpdate}
+        onRemove={() => onPreviousAuditUpdate(null)}
+      />
 
       {sources.length === 0 && (
         <div style={STYLES.infoBox}>
           💡 Start by adding a data source — give it a name (e.g. "workstations"
-          or "rpdata") then drop in your CSV file. Select which processing steps
-          apply to each source to normalize data before auditing.
+          or "rpdata") then drop in your file. Supports CSV, XLSX, XLS, TXT and TSV.
+          Select which processing steps apply to each source.
           Uploaded data is session-only.
         </div>
       )}

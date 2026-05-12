@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { runAudit } from '../utils/auditEngine';
 import { exportToExcel } from '../utils/exportExcel';
-import { addToHistory, loadConfig } from '../config/configManager';
+import { addToHistory, loadConfig, saveConfig } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -41,14 +41,31 @@ const STYLES = {
     borderRadius: '8px', padding: '16px', color: '#fcd34d',
     fontSize: '13px', marginBottom: '16px'
   },
+  deltaWarning: {
+    backgroundColor: '#1c1108', border: '1px solid #92400e',
+    borderRadius: '8px', padding: '16px', marginBottom: '16px',
+    fontSize: '13px', color: '#fb923c'
+  },
   success: {
     backgroundColor: '#0f1f17', border: '1px solid #064e3b',
     borderRadius: '8px', padding: '16px', color: '#6ee7b7',
     fontSize: '14px', marginTop: '16px'
   },
-  statsGrid: {
-    display: 'grid', gap: '12px', marginBottom: '20px'
+  confirmBox: {
+    backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
+    borderRadius: '8px', padding: '16px', marginTop: '12px'
   },
+  confirmText: { fontSize: '13px', color: '#fca5a5', marginBottom: '12px', lineHeight: '1.6' },
+  confirmBtns: { display: 'flex', gap: '8px' },
+  confirmYes: {
+    padding: '8px 16px', backgroundColor: '#7f1d1d', color: '#ffffff',
+    border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+  },
+  confirmNo: {
+    padding: '8px 16px', backgroundColor: '#1a1d27', color: '#e0e0e0',
+    border: '1px solid #2a2d3e', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
+  },
+  statsGrid: { display: 'grid', gap: '12px', marginBottom: '20px' },
   statCard: {
     backgroundColor: '#0f1117', borderRadius: '8px',
     padding: '16px', textAlign: 'center'
@@ -138,12 +155,17 @@ function PreviewTable({ rows, maxRows = 5 }) {
   );
 }
 
-export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
+export default function PreviewRun({ config, onConfigUpdate, dataSources, previousAudit }) {
   const [selectedAsset, setSelectedAsset] = useState('');
   const [selectedPrimarySource, setSelectedPrimarySource] = useState('');
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
+
+  // Delta confirmation state
+  const [showDeltaConfirm, setShowDeltaConfirm] = useState(false);
+  const [deltaDateMismatch, setDeltaDateMismatch] = useState(false);
+  const [pendingRun, setPendingRun] = useState(false);
 
   const assetTypes = config.assetTypes || {};
   const auditRules = config.auditRules || [];
@@ -159,6 +181,17 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
     ? processingSteps.filter(s => (selectedAssetConfig.selectedProcessingSteps || []).includes(s.id))
     : [];
 
+  // Check if previous audit date matches most recent history entry
+  function checkDeltaDateMatch() {
+    if (!previousAudit || !previousAudit.auditDate) return true;
+    const history = config.runHistory || [];
+    if (history.length === 0) return true;
+    const lastRun = history[0].date;
+    // Normalize both dates for comparison — strip seconds if present
+    const normalize = d => (d || '').toString().trim().slice(0, 16);
+    return normalize(previousAudit.auditDate) === normalize(lastRun);
+  }
+
   // Pre-run checklist
   const checks = [
     { label: 'Data sources loaded', ok: sourceKeys.length > 0, detail: `${sourceKeys.length} source(s): ${sourceKeys.join(', ')}` },
@@ -170,7 +203,30 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
 
   const readyToRun = checks.every(c => c.ok);
 
-  async function handleRun() {
+  function handleRunClick() {
+    // If previous audit loaded → show confirmation first
+    if (previousAudit) {
+      const dateMatch = checkDeltaDateMatch();
+      setDeltaDateMismatch(!dateMatch);
+      setShowDeltaConfirm(true);
+      setPendingRun(true);
+      return;
+    }
+    executeRun(false);
+  }
+
+  function handleDeltaConfirm() {
+    setShowDeltaConfirm(false);
+    setPendingRun(false);
+    executeRun(true);
+  }
+
+  function handleDeltaCancel() {
+    setShowDeltaConfirm(false);
+    setPendingRun(false);
+  }
+
+  async function executeRun(withDelta) {
     setError('');
     setResults(null);
     setRunning(true);
@@ -188,10 +244,11 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         auditRules,
         processingSteps,
         dataSources,
-        config.filters || []
+        config.filters || [],
+        withDelta ? previousAudit : null
       );
 
-      // Safety Net — find assets from input that didn't land anywhere in output
+      // Safety Net
       const outputIdentifiers = new Set([
         ...Object.values(auditResults.byCategory).flat(),
         ...auditResults.clean,
@@ -208,7 +265,22 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         return id && !outputIdentifiers.has(id);
       });
 
-      setResults({ ...auditResults, assetName: selectedAssetConfig.name, unaccounted });
+      setResults({
+        ...auditResults,
+        assetName: selectedAssetConfig.name,
+        unaccounted,
+        deltaRan: withDelta
+      });
+
+      // If delta ran and filters were updated → save updated config
+      if (withDelta && auditResults.updatedFilters) {
+        const updatedConfig = {
+          ...config,
+          filters: auditResults.updatedFilters
+        };
+        saveConfig(updatedConfig);
+        onConfigUpdate(updatedConfig);
+      }
 
       addToHistory({
         date: new Date().toLocaleString(),
@@ -221,9 +293,9 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
         byCategory: auditResults.summary.byCategory
       });
 
-      // Sync React state with updated history from localStorage
-      const updatedConfig = loadConfig();
-      onConfigUpdate(updatedConfig);
+      // Sync React state with updated history
+      const refreshedConfig = loadConfig();
+      onConfigUpdate(refreshedConfig);
 
     } catch (e) {
       setError(`Audit failed: ${e.message}`);
@@ -238,12 +310,33 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
     exportToExcel(results.assetName, results);
   }
 
+  // Count delta assets in under investigation
+  const deltaCount = results
+    ? (results.underInvestigation || []).filter(r => r['_Delta']).length
+    : 0;
+
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Preview & Run</h2>
       <p style={STYLES.subtitle}>
         Configure your audit run, verify everything is ready, then execute.
       </p>
+
+      {/* Delta reference indicator */}
+      {previousAudit && (
+        <div style={STYLES.deltaWarning}>
+          🔄 Delta reference loaded: <strong>{previousAudit.fileName}</strong>
+          {previousAudit.auditDate && (
+            <span style={{ marginLeft: '8px', color: '#9ca3af' }}>
+              · Run date: {previousAudit.auditDate}
+            </span>
+          )}
+          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+            Delta detection will run automatically. Changed assets will be flagged
+            in Under Investigation and removed from their Access Rules lists.
+          </div>
+        </div>
+      )}
 
       {/* Audit Configuration */}
       <div style={STYLES.section}>
@@ -315,9 +408,9 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
 
         <div style={{ marginTop: '16px' }}>
           <button
-            style={{ ...STYLES.runBtn, ...(!readyToRun || running ? STYLES.disabledBtn : {}) }}
-            onClick={handleRun}
-            disabled={!readyToRun || running}
+            style={{ ...STYLES.runBtn, ...(!readyToRun || running || pendingRun ? STYLES.disabledBtn : {}) }}
+            onClick={handleRunClick}
+            disabled={!readyToRun || running || pendingRun}
           >
             {running ? '⏳ Running...' : '▶ Run Audit'}
           </button>
@@ -329,6 +422,35 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
           )}
         </div>
 
+        {/* Delta confirmation dialog */}
+        {showDeltaConfirm && (
+          <div style={STYLES.confirmBox}>
+            <div style={STYLES.confirmText}>
+              {deltaDateMismatch && (
+                <div style={{ marginBottom: '10px', padding: '10px', backgroundColor: '#1f1a0f', borderRadius: '6px', border: '1px solid #78350f', color: '#fcd34d' }}>
+                  ⚠ Date mismatch detected. The uploaded file ({previousAudit.auditDate}) does not match
+                  your most recent audit ({(config.runHistory || [])[0]?.date || 'no history found'}).
+                  Are you sure this is the correct previous audit file?
+                </div>
+              )}
+              <strong>⚠ Delta detection will permanently remove assets from your Access Rules.</strong>
+              <br />
+              Changed or missing assets will be flagged in Under Investigation and removed from
+              their Access Rule lists. This cannot be undone within this session.
+              <br /><br />
+              Do you want to proceed?
+            </div>
+            <div style={STYLES.confirmBtns}>
+              <button style={STYLES.confirmYes} onClick={handleDeltaConfirm}>
+                Yes, run with delta detection
+              </button>
+              <button style={STYLES.confirmNo} onClick={handleDeltaCancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {error && <div style={STYLES.error}>⚠ {error}</div>}
       </div>
 
@@ -338,6 +460,29 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
           <div style={STYLES.sectionTitle}>
             Audit Complete — {results.assetName}
           </div>
+
+          {/* Delta summary banner */}
+          {results.deltaRan && deltaCount > 0 && (
+            <div style={{
+              padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
+              fontSize: '13px', fontWeight: '500',
+              backgroundColor: '#1c1108', border: '1px solid #92400e', color: '#fb923c'
+            }}>
+              🔄 Delta detection: {deltaCount} asset{deltaCount !== 1 ? 's' : ''} changed
+              status and {deltaCount !== 1 ? 'were' : 'was'} removed from Access Rules.
+              See Under Investigation for details.
+            </div>
+          )}
+
+          {results.deltaRan && deltaCount === 0 && (
+            <div style={{
+              padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
+              fontSize: '13px', fontWeight: '500',
+              backgroundColor: '#0f1f17', border: '1px solid #064e3b', color: '#34d399'
+            }}>
+              🔄 Delta detection ran — no changes detected in Access Rules assets.
+            </div>
+          )}
 
           {/* Summary stats */}
           <div style={{
@@ -392,7 +537,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources }) {
             }
           </div>
 
-          {/* Category previews — sorted by severity */}
+          {/* Category previews */}
           {Object.entries(results.byCategory)
             .sort((a, b) => {
               const sevA = results.categorySeverity?.[a[0]] ?? 99;

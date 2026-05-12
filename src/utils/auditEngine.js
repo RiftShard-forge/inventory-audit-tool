@@ -292,10 +292,128 @@ function evaluateRule(rule, row, allSources) {
 }
 
 // =================================================================
+// DELTA DETECTION
+// Compares current Access Rules lists against previous audit data.
+// For each filter (Access Rule), checks each value in its values[]
+// against all tabs in the previous audit using the filter's column.
+// If found and columns changed → flags to underInvestigation.
+// If not found at all → flags as missing.
+// Returns: { deltaAssets[], updatedFilters[] }
+// =================================================================
+
+export function runDeltaDetection(globalFilters, previousAudit, processedRows) {
+  if (!previousAudit || !previousAudit.sheets) {
+    return { deltaAssets: [], updatedFilters: globalFilters };
+  }
+
+  const deltaAssets = [];
+  const updatedFilters = globalFilters.map(filter => ({ ...filter, values: [...filter.values] }));
+
+  // Flatten all previous audit rows across all tabs into a searchable map
+  // Key: column value (lowercased), Value: { row, tabName }
+  const previousMap = new Map();
+  Object.entries(previousAudit.sheets).forEach(([tabName, rows]) => {
+    // Skip summary/metadata tabs
+    if (tabName === 'Summary' || tabName === '⚠ Unaccounted') return;
+    rows.forEach(row => {
+      Object.entries(row).forEach(([col, val]) => {
+        const key = `${col}::${(val || '').toString().toLowerCase().trim()}`;
+        if (!previousMap.has(key)) {
+          previousMap.set(key, { row, tabName, column: col });
+        }
+      });
+    });
+  });
+
+  // Also build a map of current processed rows for comparison
+  // Key: column::value (lowercased)
+  const currentMap = new Map();
+  processedRows.forEach(row => {
+    Object.entries(row).forEach(([col, val]) => {
+      const key = `${col}::${(val || '').toString().toLowerCase().trim()}`;
+      if (!currentMap.has(key)) {
+        currentMap.set(key, row);
+      }
+    });
+  });
+
+  globalFilters.forEach((filter, filterIdx) => {
+    const { column, values, label, type } = filter;
+    if (!column || !values || values.length === 0) return;
+
+    const valuesToRemove = [];
+
+    values.forEach(value => {
+      const lookupKey = `${column}::${value.toLowerCase().trim()}`;
+
+      // Find this asset in the previous audit
+      const previousEntry = previousMap.get(lookupKey);
+
+      // Find this asset in current processed rows
+      const currentRow = currentMap.get(lookupKey);
+
+      if (!currentRow) {
+        // Asset completely missing from current data
+        deltaAssets.push({
+          [column]: value,
+          '_Audit Reason': `Delta: Asset no longer found in current data (was in "${label}" — ${previousEntry ? previousEntry.tabName : 'previous audit'})`,
+          '_Delta': 'Missing',
+          '_Previous Tab': previousEntry ? previousEntry.tabName : 'Unknown',
+          '_Access Rule': label || filter.id
+        });
+        valuesToRemove.push(value);
+        return;
+      }
+
+      if (!previousEntry) {
+        // Not in previous audit — skip, nothing to compare against
+        return;
+      }
+
+      // Compare ALL columns between previous and current
+      const previousRow = previousEntry.row;
+      const changes = [];
+
+      Object.keys(currentRow).forEach(col => {
+        // Skip internal audit columns
+        if (col.startsWith('_')) return;
+        const prevVal = (previousRow[col] || '').toString().trim();
+        const currVal = (currentRow[col] || '').toString().trim();
+        if (prevVal && currVal && prevVal !== currVal) {
+          changes.push(`${col} (${prevVal} → ${currVal})`);
+        }
+      });
+
+      if (changes.length > 0) {
+        const reasonDetail = changes.join(', ');
+        deltaAssets.push({
+          ...currentRow,
+          '_Audit Reason': `Delta: ${reasonDetail}`,
+          '_Delta': 'Changed',
+          '_Previous Tab': previousEntry.tabName,
+          '_Access Rule': label || filter.id
+        });
+        valuesToRemove.push(value);
+      }
+    });
+
+    // Remove flagged values from this filter's values[]
+    if (valuesToRemove.length > 0) {
+      updatedFilters[filterIdx] = {
+        ...updatedFilters[filterIdx],
+        values: filter.values.filter(v => !valuesToRemove.includes(v))
+      };
+    }
+  });
+
+  return { deltaAssets, updatedFilters };
+}
+
+// =================================================================
 // MAIN AUDIT FUNCTION
 // =================================================================
 
-export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw, globalFilters = []) {
+export function runAudit(primarySource, allSources, assetTypeConfig, auditRules, processingSteps, allSourcesRaw, globalFilters = [], previousAudit = null) {
   const { selectedRules = [] } = assetTypeConfig;
   const profileId = assetTypeConfig.id || '';
 
@@ -438,5 +556,19 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     }, {})
   };
 
-  return { byCategory, blacklisted, clean, underInvestigation, summary, categorySeverity };
+  // STEP 5: Delta detection — runs if previous audit is loaded
+  let updatedFilters = globalFilters;
+  if (previousAudit) {
+    const { deltaAssets, updatedFilters: newFilters } = runDeltaDetection(
+      globalFilters,
+      previousAudit,
+      processedRows
+    );
+    updatedFilters = newFilters;
+    deltaAssets.forEach(asset => underInvestigation.push(asset));
+    // Recalculate under investigation count
+    summary.totalUnderInvestigation = underInvestigation.length;
+  }
+
+  return { byCategory, blacklisted, clean, underInvestigation, summary, categorySeverity, updatedFilters };
 }

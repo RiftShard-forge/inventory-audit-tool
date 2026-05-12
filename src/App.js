@@ -26,7 +26,8 @@ export default function App() {
 
   // dataSources holds the actual uploaded file data — session only
   // Structure: { sourceName: { name, headers, rows } }
-  const [dataSources, setDataSources] = useState({});
+const [dataSources, setDataSources] = useState({});
+  const [previousAudit, setPreviousAudit] = useState(null);
 
   function handleConfigUpdate(newConfig) {
     saveConfig(newConfig);
@@ -56,6 +57,8 @@ export default function App() {
             dataSources={dataSources}
             onDataSourcesUpdate={handleDataSourcesUpdate}
             processingSteps={config.processingSteps || []}
+            previousAudit={previousAudit}
+            onPreviousAuditUpdate={setPreviousAudit}
           />
         );
       case 'modules':
@@ -80,6 +83,7 @@ export default function App() {
             config={config}
             onConfigUpdate={handleConfigUpdate}
             dataSources={dataSources}
+            previousAudit={previousAudit}
           />
         );
       case 'history':
@@ -117,6 +121,11 @@ export default function App() {
           {Object.keys(dataSources).length > 0 && (
             <p style={{ color: '#34d399', fontSize: '10px', marginTop: '4px' }}>
               ● {Object.keys(dataSources).length} source{Object.keys(dataSources).length !== 1 ? 's' : ''} loaded
+            </p>
+          )}
+          {previousAudit && (
+            <p style={{ color: '#fb923c', fontSize: '10px', marginTop: '2px' }}>
+              🔄 Delta reference loaded
             </p>
           )}
         </div>
