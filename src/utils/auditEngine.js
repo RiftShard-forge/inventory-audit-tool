@@ -294,10 +294,8 @@ function evaluateRule(rule, row, allSources) {
 // =================================================================
 // DELTA DETECTION
 // Compares current Access Rules lists against previous audit data.
-// For each filter (Access Rule), checks each value in its values[]
-// against all tabs in the previous audit using the filter's column.
-// If found and columns changed → flags to underInvestigation.
-// If not found at all → flags as missing.
+// Only supports equals and is not operators.
+// Partial string operators (contains, starts with, etc.) are skipped.
 // Returns: { deltaAssets[], updatedFilters[] }
 // =================================================================
 
@@ -309,92 +307,90 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows) {
   const deltaAssets = [];
   const updatedFilters = globalFilters.map(filter => ({ ...filter, values: [...filter.values] }));
 
-  // Flatten all previous audit rows across all tabs into a searchable map
-  // Key: column value (lowercased), Value: { row, tabName }
-  const previousMap = new Map();
-  Object.entries(previousAudit.sheets).forEach(([tabName, rows]) => {
-    // Skip summary/metadata tabs
-    if (tabName === 'Summary' || tabName === '⚠ Unaccounted') return;
-    rows.forEach(row => {
-      Object.entries(row).forEach(([col, val]) => {
-        const key = `${col}::${(val || '').toString().toLowerCase().trim()}`;
-        if (!previousMap.has(key)) {
-          previousMap.set(key, { row, tabName, column: col });
-        }
-      });
-    });
-  });
-
-  // Also build a map of current processed rows for comparison
-  // Key: column::value (lowercased)
-  const currentMap = new Map();
-  processedRows.forEach(row => {
-    Object.entries(row).forEach(([col, val]) => {
-      const key = `${col}::${(val || '').toString().toLowerCase().trim()}`;
-      if (!currentMap.has(key)) {
-        currentMap.set(key, row);
-      }
-    });
-  });
-
   globalFilters.forEach((filter, filterIdx) => {
-    const { column, values, label, type } = filter;
+    const { column, values, label } = filter;
     if (!column || !values || values.length === 0) return;
+
+    // Delta detection only supports exact match operators
+    const operator = filter.operator || 'equals';
+    if (!['equals', 'is not'].includes(operator)) return;
 
     const valuesToRemove = [];
 
     values.forEach(value => {
-      const lookupKey = `${column}::${value.toLowerCase().trim()}`;
+      const valLower = value.toLowerCase().trim();
 
-      // Find this asset in the previous audit
-      const previousEntry = previousMap.get(lookupKey);
-
-      // Find this asset in current processed rows
-      const currentRow = currentMap.get(lookupKey);
-
-      if (!currentRow) {
-        // Asset completely missing from current data
-        deltaAssets.push({
-          [column]: value,
-          '_Audit Reason': `Delta: Asset no longer found in current data (was in "${label}" — ${previousEntry ? previousEntry.tabName : 'previous audit'})`,
-          '_Delta': 'Missing',
-          '_Previous Tab': previousEntry ? previousEntry.tabName : 'Unknown',
-          '_Access Rule': label || filter.id
-        });
-        valuesToRemove.push(value);
-        return;
-      }
-
-      if (!previousEntry) {
-        // Not in previous audit — skip, nothing to compare against
-        return;
-      }
-
-      // Compare ALL columns between previous and current
-      const previousRow = previousEntry.row;
-      const changes = [];
-
-      Object.keys(currentRow).forEach(col => {
-        // Skip internal audit columns
-        if (col.startsWith('_')) return;
-        const prevVal = (previousRow[col] || '').toString().trim();
-        const currVal = (currentRow[col] || '').toString().trim();
-        if (prevVal && currVal && prevVal !== currVal) {
-          changes.push(`${col} (${prevVal} → ${currVal})`);
-        }
+      // Find matching rows in current processed data
+      const matchingCurrentRows = processedRows.filter(row => {
+        const rowVal = (row[column] || '').toString().toLowerCase().trim();
+        return operator === 'is not' ? rowVal !== valLower : rowVal === valLower;
       });
 
-      if (changes.length > 0) {
-        const reasonDetail = changes.join(', ');
+      // Find matching rows in previous audit
+      const matchingPreviousRows = [];
+      Object.entries(previousAudit.sheets).forEach(([tabName, rows]) => {
+        if (tabName === 'Summary' || tabName === '⚠ Unaccounted') return;
+        rows.forEach(row => {
+          const rowVal = (row[column] || '').toString().toLowerCase().trim();
+          const matches = operator === 'is not' ? rowVal !== valLower : rowVal === valLower;
+          if (matches) matchingPreviousRows.push({ row, tabName });
+        });
+      });
+
+      if (matchingCurrentRows.length === 0 && matchingPreviousRows.length === 0) {
+        // Never existed in either audit — skip
+        return;
+      }
+
+      if (matchingCurrentRows.length === 0 && matchingPreviousRows.length > 0) {
+        // Was in previous audit but gone from current data
         deltaAssets.push({
-          ...currentRow,
-          '_Audit Reason': `Delta: ${reasonDetail}`,
-          '_Delta': 'Changed',
-          '_Previous Tab': previousEntry.tabName,
+          [column]: value,
+          '_Audit Reason': `Delta: Asset no longer found in current data (was in "${label}" — ${matchingPreviousRows[0].tabName})`,
+          '_Delta': 'Missing',
+          '_Previous Tab': matchingPreviousRows[0].tabName,
           '_Access Rule': label || filter.id
         });
         valuesToRemove.push(value);
+        return;
       }
+
+      if (matchingPreviousRows.length === 0) {
+        // Not in previous audit — nothing to compare against, skip
+        return;
+      }
+
+      // Compare each matching current row against its previous counterpart
+      matchingCurrentRows.forEach(currentRow => {
+        const currentVal = (currentRow[column] || '').toString().toLowerCase().trim();
+        const previousEntry = matchingPreviousRows.find(p =>
+          (p.row[column] || '').toString().toLowerCase().trim() === currentVal
+        ) || matchingPreviousRows[0];
+
+        const previousRow = previousEntry.row;
+        const changes = [];
+
+        Object.keys(currentRow).forEach(col => {
+          if (col.startsWith('_')) return;
+          const prevVal = (previousRow[col] || '').toString().trim();
+          const currVal = (currentRow[col] || '').toString().trim();
+          if (prevVal && currVal && prevVal !== currVal) {
+            changes.push(`${col} (${prevVal} → ${currVal})`);
+          }
+        });
+
+        if (changes.length > 0) {
+          const reasonDetail = changes.join(', ');
+          deltaAssets.push({
+            ...currentRow,
+            '_Audit Reason': `Delta: ${reasonDetail}`,
+            '_Delta': 'Changed',
+            '_Previous Tab': previousEntry.tabName,
+            '_Access Rule': label || filter.id
+          });
+          if (!valuesToRemove.includes(value)) valuesToRemove.push(value);
+        }
+      });
     });
 
     // Remove flagged values from this filter's values[]

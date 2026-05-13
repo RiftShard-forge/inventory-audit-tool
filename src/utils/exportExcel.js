@@ -28,7 +28,12 @@ function toWorksheet(rows, includeAuditColumns = true) {
 
   const data = [
     orderedKeys,
-    ...rows.map(row => sourceKeys.map(key => row[key] || ''))
+    ...rows.map(row => sourceKeys.map(key => {
+      const val = row[key];
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return JSON.stringify(val);
+      return val.toString();
+    }))
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -40,11 +45,17 @@ function toWorksheet(rows, includeAuditColumns = true) {
  * Creates a summary worksheet.
  */
 function toSummarySheet(assetName, summary, timestamp) {
+  const sanitize = v => {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return v.toString();
+  };
+
   const data = [
     ['Audit Summary'],
     [''],
-    ['Audit Profile', assetName],
-    ['Run Date', timestamp],
+    ['Audit Profile', sanitize(assetName)],
+    ['Run Date', sanitize(timestamp)],
     [''],
     ['Category', 'Count'],
     ...Object.entries(summary.byCategory).map(([cat, count]) => [cat, count]),
@@ -74,7 +85,7 @@ function toSummarySheet(assetName, summary, timestamp) {
  * Tabs are ordered by rule severity (lowest number = leftmost tab).
  */
 export function exportToExcel(assetName, results) {
-  const timestamp = new Date().toLocaleString();
+  const timestamp = results.runDate || new Date().toLocaleString();
   const dateStamp = new Date().toISOString().split('T')[0];
   const fileName = `${assetName}_Audit_${dateStamp}.xlsx`;
 

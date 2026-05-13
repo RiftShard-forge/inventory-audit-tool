@@ -772,8 +772,18 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
               value={filter.operator || 'equals'}
               onChange={e => onUpdate({ operator: e.target.value })}
             >
-              {FILTER_OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+              {FILTER_OPERATORS.map(op => {
+                const deltaSupported = ['equals', 'is not'].includes(op);
+                return (
+                  <option key={op} value={op} disabled={!deltaSupported}>
+                    {op}{!deltaSupported ? ' (delta not supported)' : ''}
+                  </option>
+                );
+              })}
             </select>
+            <span style={{ fontSize: '10px', color: '#4b5563', marginLeft: '8px' }}>
+              Delta detection supports equals and is not only
+            </span>
           </div>
 
           <div style={{ marginTop: '12px', marginBottom: '10px' }}>

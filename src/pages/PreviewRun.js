@@ -182,12 +182,13 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
     : [];
 
   // Check if previous audit date matches most recent history entry
+  // Reads fresh from localStorage to always compare against last completed audit
   function checkDeltaDateMatch() {
     if (!previousAudit || !previousAudit.auditDate) return true;
-    const history = config.runHistory || [];
+    const freshConfig = loadConfig();
+    const history = freshConfig.runHistory || [];
     if (history.length === 0) return true;
     const lastRun = history[0].date;
-    // Normalize both dates for comparison — strip seconds if present
     const normalize = d => (d || '').toString().trim().slice(0, 16);
     return normalize(previousAudit.auditDate) === normalize(lastRun);
   }
@@ -230,6 +231,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
     setError('');
     setResults(null);
     setRunning(true);
+    const runDate = new Date().toLocaleString();
 
     try {
       const primarySource = dataSources[selectedPrimarySource];
@@ -269,7 +271,8 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
         ...auditResults,
         assetName: selectedAssetConfig.name,
         unaccounted,
-        deltaRan: withDelta
+        deltaRan: withDelta,
+        runDate
       });
 
       // If delta ran and filters were updated → save updated config
@@ -283,7 +286,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
       }
 
       addToHistory({
-        date: new Date().toLocaleString(),
+        date: runDate,
         asset: selectedAssetConfig.name,
         sources: sourceKeys.join(', '),
         totalFlagged: auditResults.summary.totalFlagged,
@@ -429,7 +432,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
               {deltaDateMismatch && (
                 <div style={{ marginBottom: '10px', padding: '10px', backgroundColor: '#1f1a0f', borderRadius: '6px', border: '1px solid #78350f', color: '#fcd34d' }}>
                   ⚠ Date mismatch detected. The uploaded file ({previousAudit.auditDate}) does not match
-                  your most recent audit ({(config.runHistory || [])[0]?.date || 'no history found'}).
+                  your most recent audit ({loadConfig().runHistory?.[0]?.date || 'no history found'}).
                   Are you sure this is the correct previous audit file?
                 </div>
               )}
