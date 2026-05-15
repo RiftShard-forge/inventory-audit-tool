@@ -251,19 +251,16 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
       );
 
       // Safety Net
+      const identifierColumn = selectedAssetConfig.identifierColumn || 'Computer';
       const outputIdentifiers = new Set([
         ...Object.values(auditResults.byCategory).flat(),
         ...auditResults.clean,
         ...auditResults.blacklisted,
         ...(auditResults.underInvestigation || [])
-      ].map(row => (
-        row['Serial Number'] || row['Serial'] || row['Computer'] || row['Asset Tag'] || ''
-      ).trim().toLowerCase()));
+      ].map(row => (row[identifierColumn] || '').trim().toLowerCase()));
 
       const unaccounted = primarySource.rows.filter(row => {
-        const id = (
-          row['Serial Number'] || row['Serial'] || row['Computer'] || row['Asset Tag'] || ''
-        ).trim().toLowerCase();
+        const id = (row[identifierColumn] || '').trim().toLowerCase();
         return id && !outputIdentifiers.has(id);
       });
 

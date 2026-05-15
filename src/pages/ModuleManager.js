@@ -499,9 +499,11 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editIdentifier, setEditIdentifier] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [newIdentifier, setNewIdentifier] = useState('');
 
   const assetTypes = config.assetTypes || {};
   const auditRules = config.auditRules || [];
@@ -522,6 +524,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
     setEditingId(assetId);
     setEditName(assetTypes[assetId].name);
     setEditDesc(assetTypes[assetId].description || '');
+    setEditIdentifier(assetTypes[assetId].identifierColumn || '');
   }
 
   function handleSaveEdit(assetId) {
@@ -530,7 +533,12 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
       ...config,
       assetTypes: {
         ...assetTypes,
-        [assetId]: { ...assetTypes[assetId], name: editName.trim(), description: editDesc.trim() }
+        [assetId]: {
+          ...assetTypes[assetId],
+          name: editName.trim(),
+          description: editDesc.trim(),
+          identifierColumn: editIdentifier.trim()
+        }
       }
     });
     setEditingId(null);
@@ -551,11 +559,12 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
         ...assetTypes,
         [newId]: {
           id: newId, name: newName.trim(), description: newDesc.trim(),
+          identifierColumn: newIdentifier.trim(),
           enabled: true, selectedProcessingSteps: [], selectedRules: []
         }
       }
     });
-    setNewName(''); setNewDesc(''); setShowAddForm(false);
+    setNewName(''); setNewDesc(''); setNewIdentifier(''); setShowAddForm(false);
   }
 
   function handleSave() {
@@ -568,7 +577,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
     <div>
       {Object.keys(assetTypes).length === 0 && (
         <div style={STYLES.infoBox}>
-          💡 Create your first audit profile to get started. An audit profile defines
+          Create your first audit profile to get started. An audit profile defines
           which processing steps and audit rules apply to a specific type of audit.
           Use the Access Rules tab to configure whitelist, blacklist and watch list rules.
         </div>
@@ -582,6 +591,7 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
                 <div style={{ flex: 1 }}>
                   <input style={STYLES.editInput} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Profile name..." />
                   <input style={STYLES.editInput} value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Description..." />
+                  <input style={STYLES.editInput} value={editIdentifier} onChange={e => setEditIdentifier(e.target.value)} placeholder="Identifier column (e.g. Computer, Asset Name, Serial Number...)" />
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button style={STYLES.addBtnSmall} onClick={() => handleSaveEdit(assetId)}>✓ Save</button>
                     <button style={STYLES.cancelBtnSmall} onClick={() => setEditingId(null)}>Cancel</button>
@@ -600,11 +610,14 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
 
             {editingId !== assetId && (
               <>
-                <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
                   {asset.description || 'No description.'}
                 </p>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>
+                  Identifier: <span style={{ color: '#38bdf8' }}>{asset.identifierColumn || 'Not set'}</span>
+                </div>
                 <div style={{ fontSize: '11px', color: '#a78bfa', marginBottom: '6px', fontWeight: '500' }}>
-                  🔍 Audit Rules
+                  Audit Rules
                 </div>
                 {auditRules.length === 0 ? (
                   <div style={{ fontSize: '11px', color: '#4b5563', marginBottom: '8px' }}>
@@ -636,9 +649,10 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#ffffff', marginBottom: '12px' }}>New Audit Profile</div>
             <input style={STYLES.editInput} value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAsset()} placeholder="Profile name..." autoFocus />
             <input style={STYLES.editInput} value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Description..." />
+            <input style={STYLES.editInput} value={newIdentifier} onChange={e => setNewIdentifier(e.target.value)} placeholder="Identifier column (e.g. Computer, Asset Name, Serial Number...)" />
             <div style={{ display: 'flex', gap: '6px' }}>
               <button style={STYLES.addBtnSmall} onClick={handleAddAsset}>✓ Create</button>
-              <button style={STYLES.cancelBtnSmall} onClick={() => { setShowAddForm(false); setNewName(''); setNewDesc(''); }}>Cancel</button>
+              <button style={STYLES.cancelBtnSmall} onClick={() => { setShowAddForm(false); setNewName(''); setNewDesc(''); setNewIdentifier(''); }}>Cancel</button>
             </div>
           </div>
         ) : (
@@ -795,7 +809,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
                 style={{ ...STYLES.chip, ...(isAllProfiles ? { borderColor: '#6366f1', color: '#6366f1', backgroundColor: '#1e1b4b' } : {}) }}
                 onClick={() => onUpdate({ profileIds: [] })}
               >
-                🌐 All Profiles
+                All Profiles
               </span>
               {profileKeys.map(key => {
                 const isSelected = (filter.profileIds || []).includes(key);
@@ -871,6 +885,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
 // =============================================
 function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
   const [savedMsg, setSavedMsg] = useState('');
+  const [checkedFilters, setCheckedFilters] = useState([]);
 
   const assetTypes = config.assetTypes || {};
   const filters = config.filters || [];
@@ -901,8 +916,6 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
     updateFilters(filters.filter(f => f.id !== filterId));
   }
 
-  const [checkedFilters, setCheckedFilters] = useState([]);
-
   function handleToggleCheck(filterId) {
     setCheckedFilters(prev =>
       prev.includes(filterId) ? prev.filter(id => id !== filterId) : [...prev, filterId]
@@ -912,7 +925,7 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleSaveToLibrary() {
     const toSave = filters.filter(f => checkedFilters.includes(f.id) && f.label);
     if (toSave.length === 0) {
-      setSavedMsg('⚠ No rules selected. Add a filter name and check the box first.');
+      setSavedMsg('No rules selected. Add a filter name and check the box first.');
       setTimeout(() => setSavedMsg(''), 3000);
       return;
     }
@@ -931,16 +944,15 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Access Rules control how assets are routed before audit rules run.
+        Access Rules control how assets are routed before audit rules run.
         Each rule targets specific profiles or all profiles. First matching rule wins per asset.<br /><br />
         <span style={{ color: '#34d399' }}>✓ Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Clean</strong> tab<br />
         <span style={{ color: '#fca5a5' }}>✕ Suppression Rule</span> — asset is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
-        <span style={{ color: '#fb923c' }}>🔍 Investigation Rule</span> — asset removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
+        <span style={{ color: '#fb923c' }}>Investigation Rule</span> — asset removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
       </div>
 
       {filters.length === 0 && (
         <div style={{ ...STYLES.ruleCard, textAlign: 'center', color: '#6b7280', padding: '32px' }}>
-          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🛡</div>
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No access rules yet</div>
           <div style={{ fontSize: '12px' }}>Add a whitelist, blacklist, or watch list rule below.</div>
         </div>
@@ -971,7 +983,7 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
         <button
           style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#92400e', border: '1px solid #b45309' }}
           onClick={() => handleAddFilter('watchlist')}
-        >🔍 Add Investigation Rule</button>
+        >+ Add Investigation Rule</button>
         {filters.length > 0 && (
           <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save</button>
         )}
@@ -1040,18 +1052,17 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Audit rules define what to check during an audit. Each rule compares a column
+        Audit rules define what to check during an audit. Each rule compares a column
         value using an operator against either a static value or a lookup from another
         data source. Rules run in priority order (1 = first). Each rule is assigned
         to a category which becomes a tab in your output report.
         {categories.length === 0 && (
-          <span style={{ color: '#fca5a5' }}> ⚠ Add categories in Settings → Categories first.</span>
+          <span style={{ color: '#fca5a5' }}> Add categories in Settings → Categories first.</span>
         )}
       </div>
 
       {rules.length === 0 && (
         <div style={{ ...STYLES.ruleCard, textAlign: 'center', color: '#6b7280', padding: '32px' }}>
-          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔍</div>
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No audit rules yet</div>
           <div style={{ fontSize: '12px' }}>Click "Add Rule" to create your first audit rule.</div>
         </div>
@@ -1136,9 +1147,9 @@ export default function ModuleManager({ config, onConfigUpdate, detectedHeaders 
   const [activeTab, setActiveTab] = useState('assets');
 
   const tabs = [
-    { id: 'assets', label: '🎯 Audit Profiles' },
-    { id: 'rules', label: '🔍 Audit Rules' },
-    { id: 'filters', label: '🛡 Access Rules' }
+    { id: 'assets', label: 'Audit Profiles' },
+    { id: 'rules', label: 'Audit Rules' },
+    { id: 'filters', label: 'Access Rules' }
   ];
 
   return (

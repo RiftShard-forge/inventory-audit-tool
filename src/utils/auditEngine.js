@@ -522,8 +522,9 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
       const category = finding.rule.category || 'Uncategorized';
       if (!byCategory[category]) byCategory[category] = [];
 
+      const identifierColumn = assetTypeConfig.identifierColumn || 'Computer';
       const alreadyAdded = byCategory[category].some(r =>
-        r['Computer'] === row['Computer'] &&
+        r[identifierColumn] === row[identifierColumn] &&
         r['_Rule'] === finding.rule.name
       );
 
