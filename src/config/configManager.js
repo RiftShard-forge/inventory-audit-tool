@@ -342,3 +342,68 @@ export function deleteFromFilterHistory(label) {
     return false;
   }
 }
+
+export function syncRulesToLibrary(rules) {
+  try {
+    const library = loadLibrary();
+    let updated = false;
+    rules.forEach(rule => {
+      const existingIdx = library.ruleHistory.findIndex(r => r.name === rule.name);
+      if (existingIdx !== -1) {
+        // Rule exists in library — update it in place
+        library.ruleHistory[existingIdx] = rule;
+        updated = true;
+      }
+      // If not in library — leave it alone, user must explicitly save to library
+    });
+    if (updated) return _saveLibrary(library);
+    return true;
+  } catch (e) {
+    console.error('Failed to sync rules to library:', e);
+    return false;
+  }
+}
+
+export function clearRuleHistory() {
+  try {
+    const library = loadLibrary();
+    library.ruleHistory = [];
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to clear rule history:', e);
+    return false;
+  }
+}
+
+export function clearCategoryHistory() {
+  try {
+    const library = loadLibrary();
+    library.categoryHistory = [];
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to clear category history:', e);
+    return false;
+  }
+}
+
+export function clearStepHistory() {
+  try {
+    const library = loadLibrary();
+    library.stepHistory = [];
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to clear step history:', e);
+    return false;
+  }
+}
+
+export function clearFilterHistory() {
+  try {
+    const library = loadLibrary();
+    library.filterHistory = [];
+    return _saveLibrary(library);
+  } catch (e) {
+    console.error('Failed to clear filter history:', e);
+    return false;
+  }
+}

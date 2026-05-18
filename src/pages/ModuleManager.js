@@ -1,8 +1,8 @@
 // Copyright (c) 2026 RiftShard-forge. All Rights Reserved.
 // Unauthorized copying, distribution, or use is strictly prohibited.
 
-import React, { useState } from 'react';
-import { addToRuleHistory, addToFilterHistory } from '../config/configManager';
+import React, { useState, useEffect } from 'react';
+import { addToRuleHistory, addToFilterHistory, syncRulesToLibrary, loadLibrary } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '1000px' },
@@ -102,10 +102,26 @@ const COMPARE_TYPES = [
 ];
 const FILTER_OPERATORS = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with'];
 const FILTER_TYPES = [
-  { value: 'whitelist', label: '✓ Uncategorized Rule', color: '#34d399', border: '#064e3b', bg: '#0f1f17' },
-  { value: 'blacklist', label: '✕ Suppression Rule', color: '#fca5a5', border: '#7f1d1d', bg: '#1f1315' },
-  { value: 'watchlist', label: '🔍 Investigation Rule', color: '#fb923c', border: '#92400e', bg: '#1c1108' }
+  { value: 'whitelist', label: 'Uncategorized Rule', color: '#34d399', border: '#064e3b', bg: '#0f1f17' },
+  { value: 'blacklist', label: 'Suppression Rule', color: '#fca5a5', border: '#7f1d1d', bg: '#1f1315' },
+  { value: 'watchlist', label: 'Investigation Rule', color: '#fb923c', border: '#92400e', bg: '#1c1108' }
 ];
+
+// =============================================
+// LIBRARY BADGE
+// =============================================
+function LibraryBadge({ inLibrary }) {
+  return (
+    <span style={{
+      fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
+      backgroundColor: inLibrary ? '#0f1f17' : '#1f2937',
+      border: `1px solid ${inLibrary ? '#064e3b' : '#374151'}`,
+      color: inLibrary ? '#34d399' : '#6b7280'
+    }}>
+      {inLibrary ? 'Saved' : 'Unsaved'}
+    </span>
+  );
+}
 
 // =============================================
 // DISCOVERABLE INPUT
@@ -217,7 +233,7 @@ function buildRuleSentence(rule) {
 // =============================================
 // RULE BUILDER
 // =============================================
-function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) {
+function RuleBuilder({ rule, onUpdate, onRemove, onSeverityChange, detectedHeaders, categories, inLibrary }) {
   const sourceOptions = detectedHeaders ? Object.keys(detectedHeaders) : [];
 
   function update(changes) { onUpdate({ ...rule, ...changes }); }
@@ -239,6 +255,7 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
               backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa'
             }}>{rule.category}</span>
           )}
+          <LibraryBadge inLibrary={inLibrary} />
         </div>
         <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '18px' }} onClick={onRemove}>×</button>
       </div>
@@ -267,14 +284,15 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
         </select>
       </div>
       <div style={STYLES.row}>
-        <span style={STYLES.label}>Priority (1-20)</span>
+        <span style={STYLES.label}>Priority</span>
         <input
           style={{ ...STYLES.input, width: '80px', flex: 'none' }}
-          type="number" min="1" max="20"
-          value={rule.severity || 20}
-          onChange={e => update({ severity: parseInt(e.target.value) || 20 })}
+          type="number" min="1"
+          defaultValue={rule.severity ?? ''}
+          onBlur={e => onSeverityChange(rule.id, e.target.value)}
+          placeholder="—"
         />
-        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first (max 20)</span>
+        <span style={{ fontSize: '12px', color: '#4b5563' }}>1 = highest priority, runs first. Leave blank until ready to assign.</span>
       </div>
       <div style={{ ...STYLES.row, marginBottom: '4px' }}>
         <span style={STYLES.label}>Suppress on match</span>
@@ -331,7 +349,11 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
               value={condition.sourceId || ''}
               onChange={e => {
                 const updated = [...(rule.conditions || [])];
-                updated[idx] = { ...condition, sourceId: e.target.value };
+                updated[idx] = {
+                  ...condition,
+                  sourceId: e.target.value,
+                  sourceName: e.target.options[e.target.selectedIndex].text
+                };
                 update({ conditions: updated });
               }}
             >
@@ -416,7 +438,11 @@ function RuleBuilder({ rule, onUpdate, onRemove, detectedHeaders, categories }) 
                   value={condition.lookupSourceId || ''}
                   onChange={e => {
                     const updated = [...(rule.conditions || [])];
-                    updated[idx] = { ...condition, lookupSourceId: e.target.value };
+                    updated[idx] = {
+                      ...condition,
+                      lookupSourceId: e.target.value,
+                      lookupSourceName: e.target.options[e.target.selectedIndex].text
+                    };
                     update({ conditions: updated });
                   }}
                 >
@@ -677,10 +703,9 @@ function AuditProfilesTab({ config, onConfigUpdate, detectedHeaders }) {
 // =============================================
 // FILTER CARD
 // =============================================
-function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpdate, onRemove }) {
+function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpdate, onRemove, inLibrary, collapsed, onToggleCollapse }) {
   const [singleInput, setSingleInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
-  const [collapsed, setCollapsed] = useState(false);
 
   const filterType = FILTER_TYPES.find(t => t.value === filter.type) || FILTER_TYPES[0];
   const borderColor = filterType.border;
@@ -725,7 +750,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
   return (
     <div style={{ ...STYLES.filterCard, borderColor, backgroundColor: bgColor, marginBottom: '12px' }}>
       <div style={STYLES.filterHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '12px', fontWeight: '600', color: labelColor }}>{typeLabel}</span>
           {filter.label && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{filter.label}</span>}
           <span style={{
@@ -737,6 +762,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
             {isAllProfiles ? 'All Profiles' : `${filter.profileIds.length} profile(s)`}
           </span>
           <span style={{ fontSize: '10px', color: '#4b5563' }}>{filter.values.length} value(s)</span>
+          <LibraryBadge inLibrary={inLibrary} />
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <input
@@ -747,7 +773,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
           />
           <button
             style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={onToggleCollapse}
           >{collapsed ? '▼ Expand' : '▲ Collapse'}</button>
           <button style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px' }} onClick={onRemove}>×</button>
         </div>
@@ -886,10 +912,17 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
 function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [checkedFilters, setCheckedFilters] = useState([]);
+  const [collapsedFilters, setCollapsedFilters] = useState({});
+  const [library, setLibrary] = useState({ filterHistory: [] });
+
+  useEffect(() => {
+    setLibrary(loadLibrary());
+  }, []);
 
   const assetTypes = config.assetTypes || {};
   const filters = config.filters || [];
   const headers = detectedHeaders ? Object.values(detectedHeaders).flat() : [];
+  const filterNames = new Set((library.filterHistory || []).map(f => f.label));
 
   function updateFilters(newFilters) {
     onConfigUpdate({ ...config, filters: newFilters });
@@ -898,12 +931,8 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleAddFilter(type) {
     const newFilter = {
       id: `filter_${Date.now()}`,
-      type,
-      column: '',
-      operator: 'equals',
-      values: [],
-      label: '',
-      profileIds: []
+      type, column: '', operator: 'equals',
+      values: [], label: '', profileIds: []
     };
     updateFilters([...filters, newFilter]);
   }
@@ -930,6 +959,7 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
       return;
     }
     toSave.forEach(filter => addToFilterHistory(filter));
+    setLibrary(loadLibrary());
     setSavedMsg(`✓ ${toSave.length} access rule(s) saved to library`);
     setCheckedFilters([]);
     setTimeout(() => setSavedMsg(''), 3000);
@@ -946,8 +976,8 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
       <div style={STYLES.infoBox}>
         Access Rules control how assets are routed before audit rules run.
         Each rule targets specific profiles or all profiles. First matching rule wins per asset.<br /><br />
-        <span style={{ color: '#34d399' }}>✓ Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Clean</strong> tab<br />
-        <span style={{ color: '#fca5a5' }}>✕ Suppression Rule</span> — asset is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
+        <span style={{ color: '#34d399' }}>Uncategorized Rule</span> — asset skips all audit rules, lands in <strong style={{ color: '#e0e0e0' }}>Clean</strong> tab<br />
+        <span style={{ color: '#fca5a5' }}>Suppression Rule</span> — asset is <strong style={{ color: '#e0e0e0' }}>suppressed entirely</strong> from audit output<br />
         <span style={{ color: '#fb923c' }}>Investigation Rule</span> — asset removed from audit flow, appears in <strong style={{ color: '#e0e0e0' }}>Under Investigation</strong> tab
       </div>
 
@@ -955,6 +985,32 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
         <div style={{ ...STYLES.ruleCard, textAlign: 'center', color: '#6b7280', padding: '32px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '6px' }}>No access rules yet</div>
           <div style={{ fontSize: '12px' }}>Add a whitelist, blacklist, or watch list rule below.</div>
+        </div>
+      )}
+
+      {filters.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => {
+              const all = {};
+              filters.forEach(f => { all[f.id] = true; });
+              setCollapsedFilters(all);
+            }}
+          >▲ Collapse All</button>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => setCollapsedFilters({})}
+          >▼ Expand All</button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '11px', color: '#6b7280', marginLeft: '8px' }}>
+            <input
+              type="checkbox"
+              checked={checkedFilters.length === filters.length && filters.length > 0}
+              onChange={e => setCheckedFilters(e.target.checked ? filters.map(f => f.id) : [])}
+              style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+            />
+            Select all
+          </label>
         </div>
       )}
 
@@ -968,30 +1024,21 @@ function FiltersTab({ config, onConfigUpdate, detectedHeaders }) {
           onToggleCheck={() => handleToggleCheck(filter.id)}
           onUpdate={changes => handleUpdateFilter(filter.id, changes)}
           onRemove={() => handleRemoveFilter(filter.id)}
+          inLibrary={filterNames.has(filter.label)}
+          collapsed={!!collapsedFilters[filter.id]}
+          onToggleCollapse={() => setCollapsedFilters(prev => ({ ...prev, [filter.id]: !prev[filter.id] }))}
         />
       ))}
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button
-          style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px' }}
-          onClick={() => handleAddFilter('whitelist')}
-        >+ Add Uncategorized Rule</button>
-        <button
-          style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#7f1d1d', border: '1px solid #991b1b' }}
-          onClick={() => handleAddFilter('blacklist')}
-        >+ Add Suppression Rule</button>
-        <button
-          style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#92400e', border: '1px solid #b45309' }}
-          onClick={() => handleAddFilter('watchlist')}
-        >+ Add Investigation Rule</button>
+        <button style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px' }} onClick={() => handleAddFilter('whitelist')}>+ Add Uncategorized Rule</button>
+        <button style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#7f1d1d', border: '1px solid #991b1b' }} onClick={() => handleAddFilter('blacklist')}>+ Add Suppression Rule</button>
+        <button style={{ ...STYLES.addBtnSmall, padding: '9px 16px', fontSize: '13px', backgroundColor: '#92400e', border: '1px solid #b45309' }} onClick={() => handleAddFilter('watchlist')}>+ Add Investigation Rule</button>
         {filters.length > 0 && (
           <button style={{ ...STYLES.saveBtn, marginTop: '0' }} onClick={handleSave}>✓ Save</button>
         )}
         {filters.length > 0 && (
-          <button
-            style={{ ...STYLES.saveBtn, marginTop: '0', backgroundColor: '#0c1a2e', border: '1px solid #0c4a6e', color: '#38bdf8' }}
-            onClick={handleSaveToLibrary}
-          >★ Save checked to Library</button>
+          <button style={{ ...STYLES.saveBtn, marginTop: '0', backgroundColor: '#0c1a2e', border: '1px solid #0c4a6e', color: '#38bdf8' }} onClick={handleSaveToLibrary}>★ Save checked to Library</button>
         )}
       </div>
       {savedMsg && <div style={STYLES.savedMsg}>{savedMsg}</div>}
@@ -1006,8 +1053,15 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   const [collapsedRules, setCollapsedRules] = useState({});
   const [savedMsg, setSavedMsg] = useState('');
   const [checkedRules, setCheckedRules] = useState([]);
+  const [library, setLibrary] = useState({ ruleHistory: [] });
   const rules = config.auditRules || [];
   const categories = config.auditCategories || [];
+
+  useEffect(() => {
+    setLibrary(loadLibrary());
+  }, []);
+
+  const ruleNames = new Set((library.ruleHistory || []).map(r => r.name));
 
   function handleToggleCheck(ruleId) {
     setCheckedRules(prev =>
@@ -1018,10 +1072,27 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleAddRule() {
     const newRule = {
       id: `rule_${Date.now()}`,
-      name: '', flagReason: '', category: '', severity: 20,
+      name: '', flagReason: '', category: '', severity: null,
       suppressOnMatch: true, conditions: []
     };
     onConfigUpdate({ ...config, auditRules: [...rules, newRule] });
+  }
+
+  function handleSeverityChange(ruleId, newSeverity) {
+    if (newSeverity === null || newSeverity === '') {
+      handleUpdateRule(ruleId, { ...rules.find(r => r.id === ruleId), severity: null });
+      return;
+    }
+    const val = parseInt(newSeverity);
+    if (isNaN(val) || val < 1) return;
+
+    // Push all other rules at >= val up by 1, then set this rule to val
+    const updated = rules.map(r => {
+      if (r.id === ruleId) return { ...r, severity: val };
+      if (r.severity !== null && r.severity >= val) return { ...r, severity: r.severity + 1 };
+      return r;
+    });
+    onConfigUpdate({ ...config, auditRules: updated });
   }
 
   function handleUpdateRule(ruleId, updatedRule) {
@@ -1036,7 +1107,9 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
 
   function handleSave() {
     onConfigUpdate(config);
-    setSavedMsg('✓ Saved');
+    syncRulesToLibrary(rules);
+    setLibrary(loadLibrary());
+    setSavedMsg('✓ Saved — library entries updated');
     setTimeout(() => setSavedMsg(''), 3000);
   }
 
@@ -1044,6 +1117,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
     const toSave = rules.filter(r => checkedRules.includes(r.id) && r.name);
     if (toSave.length === 0) return;
     toSave.forEach(rule => addToRuleHistory(rule));
+    setLibrary(loadLibrary());
     setSavedMsg(`✓ ${toSave.length} rule(s) saved to library`);
     setCheckedRules([]);
     setTimeout(() => setSavedMsg(''), 3000);
@@ -1068,6 +1142,32 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
         </div>
       )}
 
+      {rules.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => {
+              const allCollapsed = {};
+              rules.forEach(r => { allCollapsed[r.id] = true; });
+              setCollapsedRules(allCollapsed);
+            }}
+          >▲ Collapse All</button>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => setCollapsedRules({})}
+          >▼ Expand All</button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '11px', color: '#6b7280', marginLeft: '8px' }}>
+            <input
+              type="checkbox"
+              checked={checkedRules.length === rules.length && rules.length > 0}
+              onChange={e => setCheckedRules(e.target.checked ? rules.map(r => r.id) : [])}
+              style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+            />
+            Select all
+          </label>
+        </div>
+      )}
+
       {rules.sort((a, b) => (a.severity || 20) - (b.severity || 20)).map(rule => (
         <div key={rule.id}>
           {collapsedRules[rule.id] ? (
@@ -1078,13 +1178,20 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>{rule.name || 'New Rule'}</span>
-                {rule.severity && (
-                  <span style={{
-                    fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
+                <input
+                  type="number" min="1"
+                  defaultValue={rule.severity ?? ''}
+                  onBlur={e => handleSeverityChange(rule.id, e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    width: '52px', padding: '2px 6px', fontSize: '11px',
                     backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
-                    color: rule.severity <= 6 ? '#f87171' : rule.severity <= 12 ? '#fb923c' : '#6b7280'
-                  }}>Priority {rule.severity}</span>
-                )}
+                    borderRadius: '4px',
+                    color: !rule.severity ? '#6b7280' : rule.severity <= 6 ? '#f87171' : rule.severity <= 12 ? '#fb923c' : '#6b7280',
+                    cursor: 'pointer'
+                  }}
+                  placeholder="—"
+                />
                 {rule.category && (
                   <span style={{
                     fontSize: '11px', padding: '2px 8px', borderRadius: '4px',
@@ -1092,6 +1199,7 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
                   }}>{rule.category}</span>
                 )}
                 <span style={{ fontSize: '11px', color: '#4b5563' }}>{(rule.conditions || []).length} condition(s)</span>
+                <LibraryBadge inLibrary={ruleNames.has(rule.name)} />
               </div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <input type="checkbox" checked={checkedRules.includes(rule.id)} onChange={() => handleToggleCheck(rule.id)} style={{ cursor: 'pointer', accentColor: '#6366f1' }} />
@@ -1115,8 +1223,10 @@ function AuditRulesTab({ config, onConfigUpdate, detectedHeaders }) {
                 rule={rule}
                 onUpdate={updated => handleUpdateRule(rule.id, updated)}
                 onRemove={() => handleRemoveRule(rule.id)}
+                onSeverityChange={handleSeverityChange}
                 detectedHeaders={detectedHeaders}
                 categories={categories}
+                inLibrary={ruleNames.has(rule.name)}
               />
             </div>
           )}

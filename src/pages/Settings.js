@@ -2,7 +2,7 @@
 // Unauthorized copying, distribution, or use is strictly prohibited.
 
 import React, { useState, useEffect } from 'react';
-import { resetConfig, exportConfig, importConfig, addToCategoryHistory, addToStepHistory, loadLibrary, deleteFromRuleHistory, deleteFromCategoryHistory, deleteFromStepHistory, deleteFromFilterHistory } from '../config/configManager';
+import { resetConfig, exportConfig, importConfig, addToCategoryHistory, addToStepHistory, loadLibrary, deleteFromRuleHistory, deleteFromCategoryHistory, deleteFromStepHistory, deleteFromFilterHistory, clearRuleHistory, clearCategoryHistory, clearStepHistory, clearFilterHistory } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -56,6 +56,11 @@ const STYLES = {
     border: '1px solid #7f1d1d', borderRadius: '8px', fontSize: '14px',
     fontWeight: '500', cursor: 'pointer'
   },
+  clearBtn: {
+    padding: '5px 12px', backgroundColor: '#1f1315', color: '#fca5a5',
+    border: '1px solid #7f1d1d', borderRadius: '6px', fontSize: '11px',
+    cursor: 'pointer'
+  },
   confirmBox: {
     backgroundColor: '#1f1315', border: '1px solid #7f1d1d',
     borderRadius: '8px', padding: '16px', marginTop: '16px'
@@ -107,37 +112,34 @@ const STYLES = {
 };
 
 const STEP_TYPES = [
-  {
-    value: 'mapValue',
-    label: 'Map Value',
-    desc: 'Replace specific values in a column with normalized values (e.g. "Base Site" → "Santo Domingo Office")'
-  },
-  {
-    value: 'stripText',
-    label: 'Strip Text',
-    desc: 'Remove a substring from all values in a column (e.g. strip "@company.co" from emails)'
-  },
-  {
-    value: 'tagByValue',
-    label: 'Tag by Value',
-    desc: 'Add a new tag column based on the value of another column (e.g. tag rows by OS type)'
-  },
-  {
-    value: 'deduplicateRows',
-    label: 'Deduplicate Rows',
-    desc: 'Remove duplicate rows in a source, keeping the one with the most recent date. Useful for sources with rehired employees or repeated entries (e.g. keep newest profile by Start date)'
-  },
-  {
-    value: 'conditionalMap',
-    label: 'Conditional Map',
-    desc: 'If a column contains/equals a value, set another column to a specific value (e.g. if Location contains "STI" → set Site to "Santiago: Edificio Aney Munoz I")'
-  }
+  { value: 'mapValue', label: 'Map Value', desc: 'Replace specific values in a column with normalized values.' },
+  { value: 'stripText', label: 'Strip Text', desc: 'Remove a substring from all values in a column.' },
+  { value: 'tagByValue', label: 'Tag by Value', desc: 'Add a new tag column based on the value of another column.' },
+  { value: 'deduplicateRows', label: 'Deduplicate Rows', desc: 'Remove duplicate rows, keeping the one with the most recent date.' },
+  { value: 'conditionalMap', label: 'Conditional Map', desc: 'If a column contains/equals a value, set another column to a specific value.' },
+  { value: 'flagDuplicates', label: 'Flag Duplicates', desc: 'Scan a column and tag any row where the value appears more than once.' }
 ];
+
+// =============================================
+// LIBRARY BADGE
+// =============================================
+function LibraryBadge({ inLibrary }) {
+  return (
+    <span style={{
+      fontSize: '10px', padding: '2px 7px', borderRadius: '4px',
+      backgroundColor: inLibrary ? '#0f1f17' : '#1f2937',
+      border: `1px solid ${inLibrary ? '#064e3b' : '#374151'}`,
+      color: inLibrary ? '#34d399' : '#6b7280'
+    }}>
+      {inLibrary ? 'Saved' : 'Unsaved'}
+    </span>
+  );
+}
 
 // =============================================
 // PROCESSING STEP CARD
 // =============================================
-function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
+function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders, inLibrary }) {
   const [newFrom, setNewFrom] = useState('');
   const [newTo, setNewTo] = useState('');
   const [newTagVal, setNewTagVal] = useState('');
@@ -175,7 +177,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
   return (
     <div style={STYLES.stepCard}>
       <div style={STYLES.stepHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={STYLES.stepTitle}>{step.name || 'Unnamed Step'}</span>
           <span style={STYLES.stepType}>
             {STEP_TYPES.find(t => t.value === step.type)?.label || step.type}
@@ -188,6 +190,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
           }} onClick={() => update({ enabled: !step.enabled })}>
             {step.enabled ? 'Enabled' : 'Disabled'}
           </span>
+          <LibraryBadge inLibrary={inLibrary} />
         </div>
         <button style={STYLES.removeBtn} onClick={onRemove}>×</button>
       </div>
@@ -197,7 +200,6 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         <input style={STYLES.input} value={step.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. RP - Deduplicate by Email" />
       </div>
 
-      {/* Apply to column — not needed for deduplicateRows */}
       {step.type !== 'deduplicateRows' && (
         <div style={STYLES.row}>
           <span style={STYLES.label}>Apply to column</span>
@@ -212,7 +214,6 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         <span style={{ fontSize: '12px', color: '#4b5563' }}>Lower number runs first</span>
       </div>
 
-      {/* MAP VALUE */}
       {step.type === 'mapValue' && (
         <div style={{ marginTop: '12px' }}>
           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '500' }}>Value Mappings</div>
@@ -234,7 +235,6 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         </div>
       )}
 
-      {/* STRIP TEXT */}
       {step.type === 'stripText' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.row}>
@@ -244,7 +244,6 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         </div>
       )}
 
-      {/* TAG BY VALUE */}
       {step.type === 'tagByValue' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.row}>
@@ -269,35 +268,20 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
         </div>
       )}
 
-      {/* DEDUPLICATE ROWS */}
       {step.type === 'deduplicateRows' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.infoBox}>
             Removes duplicate rows keeping the one with the most recent date.
-            If two rows share the same date, the optional tiebreaker picks the winner
-            by preferring the row where a column matches a specific value
-            (e.g. prefer "Active" over "Terminated" when start dates are equal).
+            If two rows share the same date, the optional tiebreaker picks the winner.
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Deduplicate by</span>
-            <input
-              style={STYLES.input}
-              value={step.config.deduplicateBy || ''}
-              onChange={e => updateConfig({ deduplicateBy: e.target.value })}
-              placeholder="Column to check for duplicates (e.g. Work email)"
-              list={`headers-dedup-${step.id}`}
-            />
+            <input style={STYLES.input} value={step.config.deduplicateBy || ''} onChange={e => updateConfig({ deduplicateBy: e.target.value })} placeholder="Column to check for duplicates (e.g. Work email)" list={`headers-dedup-${step.id}`} />
             <datalist id={`headers-dedup-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Keep latest by</span>
-            <input
-              style={STYLES.input}
-              value={step.config.dateColumn || ''}
-              onChange={e => updateConfig({ dateColumn: e.target.value })}
-              placeholder="Date column to determine winner (e.g. Start date)"
-              list={`headers-date-${step.id}`}
-            />
+            <input style={STYLES.input} value={step.config.dateColumn || ''} onChange={e => updateConfig({ dateColumn: e.target.value })} placeholder="Date column to determine winner (e.g. Start date)" list={`headers-date-${step.id}`} />
             <datalist id={`headers-date-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
           </div>
           <div style={{ fontSize: '11px', color: '#6b7280', margin: '8px 0 6px', fontWeight: '500' }}>
@@ -305,52 +289,46 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Tiebreaker column</span>
-            <input
-              style={STYLES.input}
-              value={step.config.tiebreakerColumn || ''}
-              onChange={e => updateConfig({ tiebreakerColumn: e.target.value })}
-              placeholder="Column to check when dates tie (e.g. Employment status)"
-              list={`headers-tiebreak-${step.id}`}
-            />
+            <input style={STYLES.input} value={step.config.tiebreakerColumn || ''} onChange={e => updateConfig({ tiebreakerColumn: e.target.value })} placeholder="Column to check when dates tie (e.g. Employment status)" list={`headers-tiebreak-${step.id}`} />
             <datalist id={`headers-tiebreak-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Prefer value</span>
-            <input
-              style={STYLES.input}
-              value={step.config.tiebreakerValue || ''}
-              onChange={e => updateConfig({ tiebreakerValue: e.target.value })}
-              placeholder="Value to prefer in tiebreaker column (e.g. Active)"
-            />
+            <input style={STYLES.input} value={step.config.tiebreakerValue || ''} onChange={e => updateConfig({ tiebreakerValue: e.target.value })} placeholder="Value to prefer in tiebreaker column (e.g. Active)" />
           </div>
         </div>
       )}
 
-      {/* CONDITIONAL MAP */}
+      {step.type === 'flagDuplicates' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.infoBox}>
+            Scans the selected column and tags any row where the value appears more than once.
+            Creates a tag column with value "true" or "false".
+            Then create an audit rule checking if that tag column equals "true".
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Tag column name</span>
+            <input style={STYLES.input} value={step.config.tagColumn || '_isDuplicate'} onChange={e => updateConfig({ tagColumn: e.target.value })} placeholder="e.g. _isDuplicate, _duplicateUser..." />
+          </div>
+          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+            Then in Audit Rules: when [tag column] from [source] equals true
+          </div>
+        </div>
+      )}
+
       {step.type === 'conditionalMap' && (
         <div style={{ marginTop: '12px' }}>
           <div style={STYLES.infoBox}>
             If the source column matches a condition, set another column to a specific value.
-            Example: if Location contains "STI" → set Site to "Santiago: Edificio Aney Munoz I"
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Check column</span>
-            <input
-              style={STYLES.input}
-              value={step.columnName || ''}
-              onChange={e => update({ columnName: e.target.value })}
-              placeholder="Column to check (e.g. Location)"
-              list={`headers-cond-${step.id}`}
-            />
+            <input style={STYLES.input} value={step.columnName || ''} onChange={e => update({ columnName: e.target.value })} placeholder="Column to check (e.g. Location)" list={`headers-cond-${step.id}`} />
             <datalist id={`headers-cond-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Operator</span>
-            <select
-              style={{ ...STYLES.select, width: '160px', flex: 'none' }}
-              value={step.config.operator || 'contains'}
-              onChange={e => updateConfig({ operator: e.target.value })}
-            >
+            <select style={{ ...STYLES.select, width: '160px', flex: 'none' }} value={step.config.operator || 'contains'} onChange={e => updateConfig({ operator: e.target.value })}>
               <option value="contains">contains</option>
               <option value="equals">equals</option>
               <option value="starts with">starts with</option>
@@ -359,32 +337,16 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders }) {
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Match value</span>
-            <input
-              style={STYLES.input}
-              value={step.config.matchValue || ''}
-              onChange={e => updateConfig({ matchValue: e.target.value })}
-              placeholder="Value to look for (e.g. STI)"
-            />
+            <input style={STYLES.input} value={step.config.matchValue || ''} onChange={e => updateConfig({ matchValue: e.target.value })} placeholder="Value to look for (e.g. STI)" />
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>Then set column</span>
-            <input
-              style={STYLES.input}
-              value={step.config.targetColumn || ''}
-              onChange={e => updateConfig({ targetColumn: e.target.value })}
-              placeholder="Column to update (e.g. Site)"
-              list={`headers-target-${step.id}`}
-            />
+            <input style={STYLES.input} value={step.config.targetColumn || ''} onChange={e => updateConfig({ targetColumn: e.target.value })} placeholder="Column to update (e.g. Site)" list={`headers-target-${step.id}`} />
             <datalist id={`headers-target-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
           </div>
           <div style={STYLES.row}>
             <span style={STYLES.label}>To value</span>
-            <input
-              style={STYLES.input}
-              value={step.config.targetValue || ''}
-              onChange={e => updateConfig({ targetValue: e.target.value })}
-              placeholder="Value to set (e.g. Santiago: Edificio Aney Munoz I)"
-            />
+            <input style={STYLES.input} value={step.config.targetValue || ''} onChange={e => updateConfig({ targetValue: e.target.value })} placeholder="Value to set (e.g. Santiago: Edificio Aney Munoz I)" />
           </div>
         </div>
       )}
@@ -401,7 +363,12 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [collapsedSteps, setCollapsedSteps] = useState({});
   const [checkedSteps, setCheckedSteps] = useState([]);
+  const [library, setLibrary] = useState({ stepHistory: [] });
   const steps = config.processingSteps || [];
+
+  useEffect(() => { setLibrary(loadLibrary()); }, []);
+
+  const stepNames = new Set((library.stepHistory || []).map(s => s.name));
 
   function handleToggleCheck(stepId) {
     setCheckedSteps(prev =>
@@ -412,11 +379,12 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
   function handleSaveToLibrary() {
     const toSave = steps.filter(s => checkedSteps.includes(s.id) && s.name);
     if (toSave.length === 0) {
-      setSavedMsg('⚠ No steps selected. Check the boxes next to steps you want to save.');
+      setSavedMsg('No steps selected. Check the boxes next to steps you want to save.');
       setTimeout(() => setSavedMsg(''), 3000);
       return;
     }
     toSave.forEach(step => addToStepHistory(step));
+    setLibrary(loadLibrary());
     setSavedMsg(`✓ ${toSave.length} step(s) saved to library`);
     setCheckedSteps([]);
     setTimeout(() => setSavedMsg(''), 3000);
@@ -430,14 +398,11 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
       type === 'tagByValue' ? { tagColumn: '_tag', valueTags: {} } :
       type === 'deduplicateRows' ? { deduplicateBy: '', dateColumn: '', tiebreakerColumn: '', tiebreakerValue: '' } :
       type === 'conditionalMap' ? { operator: 'contains', matchValue: '', targetColumn: '', targetValue: '' } :
+      type === 'flagDuplicates' ? { tagColumn: '_isDuplicate' } :
       {};
-
     onConfigUpdate({
       ...config,
-      processingSteps: [...steps, {
-        id, name: '', type, columnName: '',
-        enabled: true, order: steps.length + 1, config: stepConfig
-      }]
+      processingSteps: [...steps, { id, name: '', type, columnName: '', enabled: true, order: steps.length + 1, config: stepConfig }]
     });
     setShowTypeSelector(false);
     setSaved(false);
@@ -463,16 +428,37 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
   return (
     <div>
       <div style={STYLES.infoBox}>
-        💡 Processing steps run before audit rules to clean and normalize your data.
+        Processing steps run before audit rules to clean and normalize your data.
         Steps run in the order number you assign. Lower = runs first.
         Each audit profile selects which steps apply to it in Module Manager.
       </div>
 
       {steps.length === 0 && (
         <div style={{ ...STYLES.section, textAlign: 'center', color: '#6b7280' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔧</div>
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '8px' }}>No processing steps defined yet</div>
           <div style={{ fontSize: '13px' }}>Add a step to normalize your data before auditing.</div>
+        </div>
+      )}
+
+      {steps.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => { const all = {}; steps.forEach(s => { all[s.id] = true; }); setCollapsedSteps(all); }}
+          >▲ Collapse All</button>
+          <button
+            style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '4px 10px' }}
+            onClick={() => setCollapsedSteps({})}
+          >▼ Expand All</button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '11px', color: '#6b7280', marginLeft: '8px' }}>
+            <input
+              type="checkbox"
+              checked={checkedSteps.length === steps.length && steps.length > 0}
+              onChange={e => setCheckedSteps(e.target.checked ? steps.map(s => s.id) : [])}
+              style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+            />
+            Select all
+          </label>
         </div>
       )}
 
@@ -484,7 +470,7 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
               borderRadius: '8px', padding: '12px 16px', marginBottom: '10px',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <input type="checkbox" checked={checkedSteps.includes(step.id)} onChange={() => handleToggleCheck(step.id)} style={{ cursor: 'pointer', accentColor: '#6366f1' }} />
                 <span style={{ fontSize: '13px', fontWeight: '500', color: '#ffffff' }}>{step.name || 'Unnamed Step'}</span>
                 <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#1e1b4b', border: '1px solid #3730a3', color: '#a78bfa' }}>
@@ -494,6 +480,7 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
                   {step.enabled ? 'Enabled' : 'Disabled'}
                 </span>
                 <span style={{ fontSize: '11px', color: '#4b5563' }}>Order: {step.order || 1} · {step.columnName || 'No header set'}</span>
+                <LibraryBadge inLibrary={stepNames.has(step.name)} />
               </div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <button style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
@@ -508,7 +495,13 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
                 <button style={{ background: 'none', border: '1px solid #2a2d3e', color: '#6b7280', cursor: 'pointer', fontSize: '11px', borderRadius: '4px', padding: '3px 8px' }}
                   onClick={() => setCollapsedSteps(prev => ({ ...prev, [step.id]: true }))}>▲ Collapse</button>
               </div>
-              <ProcessingStepCard step={step} onUpdate={updated => handleUpdateStep(step.id, updated)} onRemove={() => handleRemoveStep(step.id)} detectedHeaders={detectedHeaders} />
+              <ProcessingStepCard
+                step={step}
+                onUpdate={updated => handleUpdateStep(step.id, updated)}
+                onRemove={() => handleRemoveStep(step.id)}
+                detectedHeaders={detectedHeaders}
+                inLibrary={stepNames.has(step.name)}
+              />
             </div>
           )}
         </div>
@@ -579,7 +572,7 @@ function CategoriesTab({ config, onConfigUpdate }) {
 
   function handleSaveToLibrary() {
     if (checkedCategories.length === 0) {
-      setSavedMsg('⚠ No categories selected. Check the boxes next to categories you want to save.');
+      setSavedMsg('No categories selected. Check the boxes next to categories you want to save.');
       setTimeout(() => setSavedMsg(''), 3000);
       return;
     }
@@ -593,10 +586,22 @@ function CategoriesTab({ config, onConfigUpdate }) {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Audit Categories</div>
       <p style={STYLES.sectionDesc}>
-        Define categories for your audit rules. Each category becomes a separate
-        tab in your exported .xlsx report. Examples: Terminated, Unaccounted,
-        State Conflict, Location Mismatch.
+        Define categories for your audit rules. Each category becomes a separate tab in your exported .xlsx report.
       </p>
+
+      {categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '11px', color: '#6b7280' }}>
+            <input
+              type="checkbox"
+              checked={checkedCategories.length === categories.length && categories.length > 0}
+              onChange={e => setCheckedCategories(e.target.checked ? [...categories] : [])}
+              style={{ cursor: 'pointer', accentColor: '#6366f1' }}
+            />
+            Select all
+          </label>
+        </div>
+      )}
 
       <div style={{ marginBottom: '16px', minHeight: '40px' }}>
         {categories.length === 0 && <p style={{ fontSize: '13px', color: '#4b5563' }}>No categories defined yet.</p>}
@@ -645,26 +650,16 @@ function ResetTab() {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Reset Configuration</div>
       <p style={STYLES.sectionDesc}>
-        Clears all saved settings — audit profiles, audit rules, processing steps,
-        categories, and run history. Cannot be undone.
+        Clears all saved settings — audit profiles, audit rules, processing steps, categories, and run history. Cannot be undone.
       </p>
-
       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '16px' }}>
-        <input
-          type="checkbox"
-          checked={resetLibraryToo}
-          onChange={e => setResetLibraryToo(e.target.checked)}
-          style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1' }}
-        />
+        <input type="checkbox" checked={resetLibraryToo} onChange={e => setResetLibraryToo(e.target.checked)} style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1' }} />
         <div>
           <div style={{ fontSize: '13px', color: '#e0e0e0', fontWeight: '500' }}>Also reset library</div>
-          <div style={{ fontSize: '11px', color: '#6b7280' }}>
-            By default the library is preserved on reset. Check this to wipe it too.
-          </div>
+          <div style={{ fontSize: '11px', color: '#6b7280' }}>By default the library is preserved on reset. Check this to wipe it too.</div>
         </div>
       </label>
-
-      <button style={STYLES.dangerBtn} onClick={() => setShowConfirm(true)}>⚠ Reset All Settings</button>
+      <button style={STYLES.dangerBtn} onClick={() => setShowConfirm(true)}>Reset All Settings</button>
       {showConfirm && (
         <div style={STYLES.confirmBox}>
           <p style={STYLES.confirmText}>
@@ -706,9 +701,7 @@ function ConfigTab({ config, onConfigUpdate }) {
     <div style={STYLES.section}>
       <div style={STYLES.sectionTitle}>Configuration Backup</div>
       <p style={STYLES.sectionDesc}>
-        Export your entire configuration (rules, categories, processing steps, audit profiles)
-        to a .json file. Import it any time to restore everything in one click —
-        useful after deployments or when setting up a new machine.
+        Export your entire configuration to a .json file. Import it any time to restore everything in one click.
       </p>
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         <button style={STYLES.saveBtn} onClick={() => exportConfig(config)}>↓ Export Config</button>
@@ -729,10 +722,9 @@ function ConfigTab({ config, onConfigUpdate }) {
 function LibraryTab({ config, onConfigUpdate }) {
   const [library, setLibrary] = useState({ ruleHistory: [], categoryHistory: [], stepHistory: [], filterHistory: [] });
   const [savedMsg, setSavedMsg] = useState('');
+  const [confirmClear, setConfirmClear] = useState(null);
 
-  useEffect(() => {
-    setLibrary(loadLibrary());
-  }, []);
+  useEffect(() => { setLibrary(loadLibrary()); }, []);
 
   function handleRestoreRule(rule) {
     const restored = { ...rule, id: `rule_${Date.now()}` };
@@ -752,6 +744,13 @@ function LibraryTab({ config, onConfigUpdate }) {
     const restored = { ...step, id: `step_${Date.now()}` };
     onConfigUpdate({ ...config, processingSteps: [...(config.processingSteps || []), restored] });
     setSavedMsg(`✓ Step "${step.name}" restored to Processing`);
+    setTimeout(() => setSavedMsg(''), 3000);
+  }
+
+  function handleRestoreFilter(filter) {
+    const restored = { ...filter, id: `filter_${Date.now()}` };
+    onConfigUpdate({ ...config, filters: [...(config.filters || []), restored] });
+    setSavedMsg(`✓ Access rule "${filter.label}" restored`);
     setTimeout(() => setSavedMsg(''), 3000);
   }
 
@@ -775,20 +774,30 @@ function LibraryTab({ config, onConfigUpdate }) {
     setLibrary(prev => ({ ...prev, filterHistory: (prev.filterHistory || []).filter(f => f.label !== label) }));
   }
 
-  function handleRestoreFilter(filter) {
-    const restored = { ...filter, id: `filter_${Date.now()}` };
-    onConfigUpdate({ ...config, filters: [...(config.filters || []), restored] });
-    setSavedMsg(`✓ Access rule "${filter.label}" restored`);
+  function handleClearConfirmed() {
+    if (confirmClear === 'rules') { clearRuleHistory(); setLibrary(prev => ({ ...prev, ruleHistory: [] })); }
+    else if (confirmClear === 'steps') { clearStepHistory(); setLibrary(prev => ({ ...prev, stepHistory: [] })); }
+    else if (confirmClear === 'categories') { clearCategoryHistory(); setLibrary(prev => ({ ...prev, categoryHistory: [] })); }
+    else if (confirmClear === 'filters') { clearFilterHistory(); setLibrary(prev => ({ ...prev, filterHistory: [] })); }
+    setConfirmClear(null);
+    setSavedMsg('✓ Section cleared');
     setTimeout(() => setSavedMsg(''), 3000);
   }
 
-  const isEmpty = library.ruleHistory.length === 0 && library.categoryHistory.length === 0 && library.stepHistory.length === 0 && (library.filterHistory || []).length === 0;
+  const isEmpty = library.ruleHistory.length === 0 && library.categoryHistory.length === 0 &&
+    library.stepHistory.length === 0 && (library.filterHistory || []).length === 0;
+
+  const sectionHeader = (title, clearKey) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+      <div style={STYLES.sectionTitle}>{title}</div>
+      <button style={STYLES.clearBtn} onClick={() => setConfirmClear(clearKey)}>Clear all</button>
+    </div>
+  );
 
   return (
     <div>
       {isEmpty && (
         <div style={{ ...STYLES.section, textAlign: 'center', color: '#6b7280' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#ffffff', marginBottom: '8px' }}>Your library is empty</div>
           <div style={{ fontSize: '13px' }}>Check the boxes next to rules, steps, or categories and click "★ Save checked to Library".</div>
         </div>
@@ -796,9 +805,19 @@ function LibraryTab({ config, onConfigUpdate }) {
 
       {savedMsg && <div style={{ ...STYLES.savedMsg, marginBottom: '12px' }}>{savedMsg}</div>}
 
+      {confirmClear && (
+        <div style={STYLES.confirmBox}>
+          <p style={STYLES.confirmText}>Clear all saved {confirmClear}? This cannot be undone.</p>
+          <div style={STYLES.confirmBtns}>
+            <button style={STYLES.confirmYes} onClick={handleClearConfirmed}>Yes, clear all</button>
+            <button style={STYLES.confirmNo} onClick={() => setConfirmClear(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       {library.ruleHistory.length > 0 && (
         <div style={STYLES.section}>
-          <div style={STYLES.sectionTitle}>🔍 Saved Rules</div>
+          {sectionHeader('Saved Rules', 'rules')}
           <p style={STYLES.sectionDesc}>Click Restore to add a rule back to the Audit Rules tab.</p>
           {library.ruleHistory.map((rule, idx) => (
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', marginBottom: '8px' }}>
@@ -819,7 +838,7 @@ function LibraryTab({ config, onConfigUpdate }) {
 
       {library.categoryHistory.length > 0 && (
         <div style={STYLES.section}>
-          <div style={STYLES.sectionTitle}>🏷 Saved Categories</div>
+          {sectionHeader('Saved Categories', 'categories')}
           <p style={STYLES.sectionDesc}>Click + to restore a category to the active list.</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {library.categoryHistory.map((cat, idx) => {
@@ -839,7 +858,7 @@ function LibraryTab({ config, onConfigUpdate }) {
 
       {library.stepHistory.length > 0 && (
         <div style={STYLES.section}>
-          <div style={STYLES.sectionTitle}>🔧 Saved Processing Steps</div>
+          {sectionHeader('Saved Processing Steps', 'steps')}
           <p style={STYLES.sectionDesc}>Click Restore to add a step back to Processing.</p>
           {library.stepHistory.map((step, idx) => (
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', marginBottom: '8px' }}>
@@ -860,19 +879,11 @@ function LibraryTab({ config, onConfigUpdate }) {
 
       {(library.filterHistory || []).length > 0 && (
         <div style={STYLES.section}>
-          <div style={STYLES.sectionTitle}>🛡 Saved Access Rules</div>
+          {sectionHeader('Saved Access Rules', 'filters')}
           <p style={STYLES.sectionDesc}>Click Restore to add an access rule back to the Access Rules tab.</p>
           {(library.filterHistory || []).map((filter, idx) => {
-            const typeColors = {
-              whitelist: '#34d399',
-              blacklist: '#fca5a5',
-              watchlist: '#fb923c'
-            };
-            const typeLabels = {
-              whitelist: '✓ Uncategorized Rule',
-              blacklist: '✕ Suppression Rule',
-              watchlist: '🔍 Investigation Rule'
-            };
+            const typeColors = { whitelist: '#34d399', blacklist: '#fca5a5', watchlist: '#fb923c' };
+            const typeLabels = { whitelist: 'Uncategorized Rule', blacklist: 'Suppression Rule', watchlist: 'Investigation Rule' };
             return (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', marginBottom: '8px' }}>
                 <div>
@@ -903,18 +914,17 @@ export default function Settings({ config, onConfigUpdate, detectedHeaders }) {
   const [activeTab, setActiveTab] = useState('categories');
 
   const tabs = [
-    { id: 'categories', label: '🏷 Categories' },
-    { id: 'processing', label: '🔧 Processing' },
-    { id: 'config', label: '💾 Config' },
-    { id: 'library', label: '📚 Library' },
-    { id: 'reset', label: '⚠ Reset' }
+    { id: 'categories', label: 'Categories' },
+    { id: 'processing', label: 'Processing' },
+    { id: 'config', label: 'Config' },
+    { id: 'library', label: 'Library' },
+    { id: 'reset', label: 'Reset' }
   ];
 
   return (
     <div style={STYLES.page}>
       <h2 style={STYLES.title}>Settings</h2>
       <p style={STYLES.subtitle}>Manage audit categories and configure data processing steps.</p>
-
       <div style={STYLES.tabs}>
         {tabs.map(tab => (
           <button key={tab.id} style={{ ...STYLES.tab, ...(activeTab === tab.id ? STYLES.tabActive : {}) }} onClick={() => setActiveTab(tab.id)}>
@@ -922,7 +932,6 @@ export default function Settings({ config, onConfigUpdate, detectedHeaders }) {
           </button>
         ))}
       </div>
-
       {activeTab === 'categories' && <CategoriesTab config={config} onConfigUpdate={onConfigUpdate} />}
       {activeTab === 'processing' && <ProcessingTab config={config} onConfigUpdate={onConfigUpdate} detectedHeaders={detectedHeaders} />}
       {activeTab === 'config' && <ConfigTab config={config} onConfigUpdate={onConfigUpdate} />}

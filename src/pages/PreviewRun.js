@@ -193,13 +193,33 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
     return normalize(previousAudit.auditDate) === normalize(lastRun);
   }
 
+  // Check all rule conditions have their sources loaded
+  const missingSources = [];
+  applicableRules.forEach(rule => {
+    (rule.conditions || []).forEach(condition => {
+      if (condition.sourceId && !dataSources[condition.sourceId]) {
+        const name = condition.sourceName || condition.sourceId;
+        if (!missingSources.includes(name)) missingSources.push(name);
+      }
+      if (condition.lookupSourceId && !dataSources[condition.lookupSourceId]) {
+        const name = condition.lookupSourceName || condition.lookupSourceId;
+        if (!missingSources.includes(name)) missingSources.push(name);
+      }
+    });
+  });
+
   // Pre-run checklist
   const checks = [
     { label: 'Data sources loaded', ok: sourceKeys.length > 0, detail: `${sourceKeys.length} source(s): ${sourceKeys.join(', ')}` },
     { label: 'Audit Profile selected', ok: !!selectedAsset, detail: selectedAssetConfig?.name || 'None selected' },
     { label: 'Primary source selected', ok: !!selectedPrimarySource, detail: selectedPrimarySource || 'None selected' },
     { label: 'Audit rules configured', ok: applicableRules.length > 0, detail: `${applicableRules.length} rule(s) selected` },
-    { label: 'Categories defined', ok: (config.auditCategories || []).length > 0, detail: `${(config.auditCategories || []).length} category(ies)` }
+    { label: 'Categories defined', ok: (config.auditCategories || []).length > 0, detail: `${(config.auditCategories || []).length} category(ies)` },
+    ...(missingSources.length > 0 ? [{
+      label: 'Rule sources missing',
+      ok: false,
+      detail: `These sources are referenced in rules but not loaded: ${missingSources.join(', ')}`
+    }] : [])
   ];
 
   const readyToRun = checks.every(c => c.ok);

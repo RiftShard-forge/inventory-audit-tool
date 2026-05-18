@@ -105,6 +105,26 @@ function runProcessingStep(rows, step) {
       return Array.from(seen.values());
     }
 
+    case 'flagDuplicates': {
+      if (!columnName) return rows;
+      const { tagColumn = '_isDuplicate' } = stepConfig;
+
+      // Count occurrences of each value in the column
+      const valueCounts = new Map();
+      rows.forEach(row => {
+        const val = (row[columnName] || '').toString().toLowerCase().trim();
+        if (!val) return;
+        valueCounts.set(val, (valueCounts.get(val) || 0) + 1);
+      });
+
+      // Tag rows where the value appears more than once
+      return rows.map(row => {
+        const val = (row[columnName] || '').toString().toLowerCase().trim();
+        const isDuplicate = (valueCounts.get(val) || 0) > 1;
+        return { ...row, [tagColumn]: isDuplicate ? 'true' : 'false' };
+      });
+    }
+
     case 'conditionalMap': {
       if (!columnName) return rows;
       const { operator = 'contains', matchValue = '', targetColumn = '', targetValue = '' } = stepConfig;
@@ -422,14 +442,14 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
   // STEP 1: Get applicable rules sorted by severity
   const applicableRules = auditRules
     .filter(rule => selectedRules.includes(rule.id))
-    .sort((a, b) => (a.severity || 10) - (b.severity || 10));
+    .sort((a, b) => (a.severity ?? Infinity) - (b.severity ?? Infinity));
 
   // Build category severity map
   const categorySeverity = {};
   applicableRules.forEach(rule => {
     const cat = rule.category || 'Uncategorized';
-    const current = categorySeverity[cat] ?? 99;
-    categorySeverity[cat] = Math.min(current, rule.severity || 10);
+    const current = categorySeverity[cat] ?? Infinity;
+    categorySeverity[cat] = Math.min(current, rule.severity ?? Infinity);
   });
 
   // STEP 2: Run processing steps per source
