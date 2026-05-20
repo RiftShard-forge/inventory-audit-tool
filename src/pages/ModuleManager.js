@@ -724,7 +724,7 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
   function handleBulkAdd() {
     if (!bulkInput.trim()) return;
     const newValues = bulkInput
-      .split(';')
+      .split(/;|\n|\r\n/)
       .map(v => v.trim())
       .filter(v => v && !filter.values.includes(v));
     if (newValues.length === 0) return;
@@ -887,11 +887,11 @@ function FilterCard({ filter, assetTypes, headers, checked, onToggleCheck, onUpd
                 Bulk add — separate with semicolons (e.g. HH2-ABC123; HH2-DEF456; ThinkPad T450)
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px' }}
-                  value={bulkInput}
-                  onChange={e => setBulkInput(e.target.value)}
-                  placeholder="Value1; Value2; Value3..."
+                <textarea
+                style={{ ...STYLES.input, flex: 1, fontSize: '12px', padding: '7px 10px', resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
+                value={bulkInput}
+                onChange={e => setBulkInput(e.target.value)}
+                placeholder="Paste values here — one per line or separated by semicolons"
                 />
                 <button
                   style={{ ...STYLES.addBtnSmall, backgroundColor: '#374151' }}
