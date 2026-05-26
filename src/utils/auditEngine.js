@@ -36,7 +36,7 @@ export function parseCsv(text) {
 // PROCESSING STEP RUNNERS
 // =================================================================
 
-function runProcessingStep(rows, step) {
+function runProcessingStep(rows, step, allSources = {}) {
   const { type, columnName, config: stepConfig } = step;
 
   switch (type) {
@@ -139,6 +139,41 @@ function runProcessingStep(rows, step) {
         else if (operator === 'starts with') matches = src.startsWith(cmp);
         else if (operator === 'ends with') matches = src.endsWith(cmp);
         return matches ? { ...row, [targetColumn]: targetValue } : row;
+      });
+    }
+
+    case 'enrichFromLookup': {
+      const {
+        sourceColumn: keyColumn = '',
+        lookupSourceId = '',
+        lookupKeyColumn = '',
+        lookupValueColumn = '',
+        newColumnName = ''
+      } = stepConfig;
+
+      if (!keyColumn || !lookupSourceId || !lookupKeyColumn || !lookupValueColumn || !newColumnName) {
+        return rows;
+      }
+
+     const lookupSource = allSources[lookupSourceId];
+
+      if (!lookupSource || !lookupSource.rows) {
+        console.warn(`enrichFromLookup: lookup source "${lookupSourceId}" not loaded`);
+        return rows.map(row => ({ ...row, [newColumnName]: '' }));
+      }
+
+      // Build a fast lookup map from the lookup source
+      const lookupMap = new Map();
+      lookupSource.rows.forEach(lr => {
+        const key = (lr[lookupKeyColumn] || '').toString().toLowerCase().trim();
+        if (key) lookupMap.set(key, lr[lookupValueColumn] || '');
+      });
+
+      // Add the new column to each row
+      return rows.map(row => {
+        const key = (row[keyColumn] || '').toString().toLowerCase().trim();
+        const value = lookupMap.get(key) || '';
+        return { ...row, [newColumnName]: value };
       });
     }
 
@@ -452,38 +487,60 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
     categorySeverity[cat] = Math.min(current, rule.severity ?? Infinity);
   });
 
-  // STEP 2: Run processing steps per source
-  let processedRows = [...primarySource.rows];
+  // STEP 2: Run processing steps per source — TWO PASSES
+  // Pass 1: single-source steps (each source independently)
+  // Pass 2: cross-source steps (run after all sources fully processed)
+  // This ensures cross-source steps like enrichFromLookup can see fully processed lookup sources.
 
-  if (processingSteps && processingSteps.length > 0) {
-    const selectedStepIds = primarySource.selectedProcessingSteps || [];
+  const CROSS_SOURCE_STEP_TYPES = ['enrichFromLookup'];
+  const isCrossSourceStep = step => CROSS_SOURCE_STEP_TYPES.includes(step.type);
+
+  // Helper: run a subset of steps on a row array
+  function runStepsOnRows(rows, allStepIds, filterFn, allSrc) {
+    if (!processingSteps || processingSteps.length === 0) return rows;
     const stepsToRun = processingSteps
-      .filter(step => step.enabled && selectedStepIds.includes(step.id))
+      .filter(step => step.enabled && allStepIds.includes(step.id) && filterFn(step))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
+    let result = rows;
     stepsToRun.forEach(step => {
-      processedRows = runProcessingStep(processedRows, step);
+      result = runProcessingStep(result, step, allSrc);
     });
+    return result;
   }
 
-  // Process all other sources using their own selected steps
+  // -------- PASS 1: single-source steps on primary source --------
+  let processedRows = [...primarySource.rows];
+  const primaryStepIds = primarySource.selectedProcessingSteps || [];
+  processedRows = runStepsOnRows(processedRows, primaryStepIds, step => !isCrossSourceStep(step), allSourcesRaw || {});
+
+  // -------- PASS 1: single-source steps on all other sources --------
   const processedSources = { ...allSources };
-  if (allSourcesRaw && processingSteps && processingSteps.length > 0) {
+  if (allSourcesRaw) {
     Object.keys(allSourcesRaw).forEach(sourceId => {
       const source = allSourcesRaw[sourceId];
       if (!source || !source.rows) return;
-      const selectedStepIds = source.selectedProcessingSteps || [];
-      if (selectedStepIds.length === 0) return;
-
-      const stepsToRun = processingSteps
-        .filter(step => step.enabled && selectedStepIds.includes(step.id))
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-      let processedSourceRows = [...source.rows];
-      stepsToRun.forEach(step => {
-        processedSourceRows = runProcessingStep(processedSourceRows, step);
-      });
-
+      const stepIds = source.selectedProcessingSteps || [];
+      if (stepIds.length === 0) {
+        processedSources[sourceId] = source;
+        return;
+      }
+      const processedSourceRows = runStepsOnRows([...source.rows], stepIds, step => !isCrossSourceStep(step), allSourcesRaw);
       processedSources[sourceId] = { ...source, rows: processedSourceRows };
+    });
+  }
+
+  // -------- PASS 2: cross-source steps now run with all sources fully prepared --------
+  // For cross-source steps, we pass processedSources (the fully-processed map) so lookups work.
+  processedRows = runStepsOnRows(processedRows, primaryStepIds, step => isCrossSourceStep(step), processedSources);
+
+  if (allSourcesRaw) {
+    Object.keys(allSourcesRaw).forEach(sourceId => {
+      const source = allSourcesRaw[sourceId];
+      if (!source || !source.rows) return;
+      const stepIds = source.selectedProcessingSteps || [];
+      if (stepIds.length === 0) return;
+      const updatedRows = runStepsOnRows([...processedSources[sourceId].rows], stepIds, step => isCrossSourceStep(step), processedSources);
+      processedSources[sourceId] = { ...processedSources[sourceId], rows: updatedRows };
     });
   }
 

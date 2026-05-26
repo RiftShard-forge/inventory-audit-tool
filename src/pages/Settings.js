@@ -117,7 +117,8 @@ const STEP_TYPES = [
   { value: 'tagByValue', label: 'Tag by Value', desc: 'Add a new tag column based on the value of another column.' },
   { value: 'deduplicateRows', label: 'Deduplicate Rows', desc: 'Remove duplicate rows, keeping the one with the most recent date.' },
   { value: 'conditionalMap', label: 'Conditional Map', desc: 'If a column contains/equals a value, set another column to a specific value.' },
-  { value: 'flagDuplicates', label: 'Flag Duplicates', desc: 'Scan a column and tag any row where the value appears more than once.' }
+  { value: 'flagDuplicates', label: 'Flag Duplicates', desc: 'Scan a column and tag any row where the value appears more than once.' },
+  { value: 'enrichFromLookup', label: 'Enrich from Lookup', desc: 'Add a new column to this source by looking up a value from another source.' }
 ];
 
 // =============================================
@@ -200,7 +201,7 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders, inLibra
         <input style={STYLES.input} value={step.name || ''} onChange={e => update({ name: e.target.value })} placeholder="e.g. RP - Deduplicate by Email" />
       </div>
 
-      {step.type !== 'deduplicateRows' && (
+      {step.type !== 'deduplicateRows' && step.type !== 'enrichFromLookup' && (
         <div style={STYLES.row}>
           <span style={STYLES.label}>Apply to column</span>
           <input style={STYLES.input} value={step.columnName || ''} onChange={e => update({ columnName: e.target.value })} placeholder="Header name from your CSV..." list={`headers-${step.id}`} />
@@ -350,6 +351,68 @@ function ProcessingStepCard({ step, onUpdate, onRemove, detectedHeaders, inLibra
           </div>
         </div>
       )}
+
+      {step.type === 'enrichFromLookup' && (
+        <div style={{ marginTop: '12px' }}>
+          <div style={STYLES.infoBox}>
+            Adds a new column to this source by looking up a value from another source.
+            Example: add "Department" to ME-WorkstationData by matching "Last Logged In User"
+            against RP-Data's "Work email", pulling the "Department" value.
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Match on column</span>
+            <input style={STYLES.input} value={step.config.sourceColumn || ''} onChange={e => updateConfig({ sourceColumn: e.target.value })} placeholder="Column in this source used as the key (e.g. Last Logged In User)" list={`headers-enrich-src-${step.id}`} />
+            <datalist id={`headers-enrich-src-${step.id}`}>{headers.map(h => <option key={h} value={h} />)}</datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Look in source</span>
+            <select
+              style={{ ...STYLES.select, width: '100%' }}
+              value={step.config.lookupSourceId || ''}
+              onChange={e => updateConfig({ lookupSourceId: e.target.value })}
+            >
+              <option value="">— Select source —</option>
+              {detectedHeaders && Object.keys(detectedHeaders).map(sid => (
+                <option key={sid} value={sid}>{sid}</option>
+              ))}
+            </select>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Match against column</span>
+            <input
+              style={STYLES.input}
+              value={step.config.lookupKeyColumn || ''}
+              onChange={e => updateConfig({ lookupKeyColumn: e.target.value })}
+              placeholder="Column in lookup source to match against (e.g. Work email)"
+              list={`headers-enrich-key-${step.id}`}
+            />
+            <datalist id={`headers-enrich-key-${step.id}`}>
+              {step.config.lookupSourceId && detectedHeaders && detectedHeaders[step.config.lookupSourceId]
+                ? detectedHeaders[step.config.lookupSourceId].map(h => <option key={h} value={h} />)
+                : null}
+            </datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>Pull column</span>
+            <input
+              style={STYLES.input}
+              value={step.config.lookupValueColumn || ''}
+              onChange={e => updateConfig({ lookupValueColumn: e.target.value })}
+              placeholder="Column to pull from lookup source (e.g. Department)"
+              list={`headers-enrich-val-${step.id}`}
+            />
+            <datalist id={`headers-enrich-val-${step.id}`}>
+              {step.config.lookupSourceId && detectedHeaders && detectedHeaders[step.config.lookupSourceId]
+                ? detectedHeaders[step.config.lookupSourceId].map(h => <option key={h} value={h} />)
+                : null}
+            </datalist>
+          </div>
+          <div style={STYLES.row}>
+            <span style={STYLES.label}>New column name</span>
+            <input style={STYLES.input} value={step.config.newColumnName || ''} onChange={e => updateConfig({ newColumnName: e.target.value })} placeholder="Name for the new column on this source (e.g. Department)" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -399,6 +462,7 @@ function ProcessingTab({ config, onConfigUpdate, detectedHeaders }) {
       type === 'deduplicateRows' ? { deduplicateBy: '', dateColumn: '', tiebreakerColumn: '', tiebreakerValue: '' } :
       type === 'conditionalMap' ? { operator: 'contains', matchValue: '', targetColumn: '', targetValue: '' } :
       type === 'flagDuplicates' ? { tagColumn: '_isDuplicate' } :
+      type === 'enrichFromLookup' ? { sourceColumn: '', lookupSourceId: '', lookupKeyColumn: '', lookupValueColumn: '', newColumnName: '' } :
       {};
     onConfigUpdate({
       ...config,
