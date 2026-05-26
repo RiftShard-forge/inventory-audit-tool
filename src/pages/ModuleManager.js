@@ -389,31 +389,88 @@ function RuleBuilder({ rule, onUpdate, onRemove, onSeverityChange, detectedHeade
           {(!condition.compareType || condition.compareType === 'value') && (
             <>
               <div style={STYLES.row}>
-                <span style={STYLES.label}>Operator</span>
-                <select style={STYLES.operatorSelect}
-                  value={condition.operator || 'equals'}
-                  onChange={e => {
-                    const updated = [...(rule.conditions || [])];
-                    updated[idx] = { ...condition, operator: e.target.value };
-                    update({ conditions: updated });
-                  }}
-                >
-                  {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
-                </select>
+                <span style={STYLES.label}>Numeric</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!condition.isNumeric}
+                    onChange={e => {
+                      const updated = [...(rule.conditions || [])];
+                      const isNum = e.target.checked;
+                      updated[idx] = {
+                        ...condition,
+                        isNumeric: isNum,
+                        operator: isNum ? 'greater than' : 'equals'
+                      };
+                      update({ conditions: updated });
+                    }}
+                    style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1' }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                    Treat as numeric comparison
+                  </span>
+                </label>
               </div>
-              <div style={STYLES.row}>
-                <span style={STYLES.label}>Value</span>
-                <DiscoverableInput
-                  value={condition.compareValue || ''}
-                  onChange={val => {
-                    const updated = [...(rule.conditions || [])];
-                    updated[idx] = { ...condition, compareValue: val };
-                    update({ conditions: updated });
-                  }}
-                  headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
-                  placeholder="Value, or separate multiple with ; (e.g. Terminated; Damaged)"
-                />
-              </div>
+
+              {condition.isNumeric ? (
+                <div style={STYLES.row}>
+                  <span style={STYLES.label}>Value is</span>
+                  <select style={{ ...STYLES.operatorSelect, width: '160px' }}
+                    value={condition.operator || 'greater than'}
+                    onChange={e => {
+                      const updated = [...(rule.conditions || [])];
+                      updated[idx] = { ...condition, operator: e.target.value };
+                      update({ conditions: updated });
+                    }}
+                  >
+                    <option value="greater than">greater than</option>
+                    <option value="less than">less than</option>
+                    <option value="greater than or equal">greater than or equal</option>
+                    <option value="less than or equal">less than or equal</option>
+                  </select>
+                  <input
+                    type="number"
+                    step="any"
+                    style={{ ...STYLES.input, flex: 1 }}
+                    value={condition.compareValue || ''}
+                    onChange={e => {
+                      const updated = [...(rule.conditions || [])];
+                      updated[idx] = { ...condition, compareValue: e.target.value };
+                      update({ conditions: updated });
+                    }}
+                    placeholder="Number (e.g. 8)"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div style={STYLES.row}>
+                    <span style={STYLES.label}>Operator</span>
+                    <select style={STYLES.operatorSelect}
+                      value={condition.operator || 'equals'}
+                      onChange={e => {
+                        const updated = [...(rule.conditions || [])];
+                        updated[idx] = { ...condition, operator: e.target.value };
+                        update({ conditions: updated });
+                      }}
+                    >
+                      {OPERATORS.map(op => <option key={op} value={op}>{op}</option>)}
+                    </select>
+                  </div>
+                  <div style={STYLES.row}>
+                    <span style={STYLES.label}>Value</span>
+                    <DiscoverableInput
+                      value={condition.compareValue || ''}
+                      onChange={val => {
+                        const updated = [...(rule.conditions || [])];
+                        updated[idx] = { ...condition, compareValue: val };
+                        update({ conditions: updated });
+                      }}
+                      headers={condition.sourceId && detectedHeaders ? detectedHeaders[condition.sourceId] : []}
+                      placeholder="Value, or separate multiple with ; (e.g. Terminated; Damaged)"
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
 

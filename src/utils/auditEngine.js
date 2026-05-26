@@ -187,10 +187,27 @@ function runProcessingStep(rows, step, allSources = {}) {
 // =================================================================
 
 function applyOperator(sourceValue, operator, compareValue) {
+  // Numeric operators — parse both sides as numbers, compare
+  const numericOperators = ['greater than', 'less than', 'greater than or equal', 'less than or equal'];
+  if (numericOperators.includes(operator)) {
+    const srcNum = parseFloat(sourceValue);
+    if (isNaN(srcNum)) return false;
+
+    const cmpNum = parseFloat(compareValue);
+    if (isNaN(cmpNum)) return false;
+
+    switch (operator) {
+      case 'greater than': return srcNum > cmpNum;
+      case 'less than': return srcNum < cmpNum;
+      case 'greater than or equal': return srcNum >= cmpNum;
+      case 'less than or equal': return srcNum <= cmpNum;
+      default: return false;
+    }
+  }
+
   const src = (sourceValue || '').toString().toLowerCase().trim();
 
   // Check if compareValue contains semicolon-separated values
-  // Applies to operators that compare against a value (not is empty/is not empty/is not found)
   const multiValueOperators = ['equals', 'is not', 'contains', 'does not contain', 'starts with', 'ends with'];
   if (multiValueOperators.includes(operator) && (compareValue || '').toString().includes(';')) {
     const values = compareValue.toString().split(';').map(v => v.trim().toLowerCase()).filter(v => v);
@@ -206,7 +223,6 @@ function applyOperator(sourceValue, operator, compareValue) {
     }
   }
 
-  // Single value — original behavior
   const cmp = (compareValue || '').toString().toLowerCase().trim();
   switch (operator) {
     case 'equals': return src === cmp;
@@ -221,6 +237,7 @@ function applyOperator(sourceValue, operator, compareValue) {
     default: return src === cmp;
   }
 }
+
 
 // =================================================================
 // FILTER EVALUATOR
