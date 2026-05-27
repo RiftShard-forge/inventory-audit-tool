@@ -670,15 +670,6 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
   let deltaAssets = [];
   if (previousAudit) {
     const identifierColumn = assetTypeConfig.identifierColumn || 'Computer';
-    console.log('DELTA DEBUG:', {
-      assetTypeConfigKeys: Object.keys(assetTypeConfig || {}),
-      identifierColumnFromConfig: assetTypeConfig?.identifierColumn,
-      identifierColumnResolved: identifierColumn,
-      previousAuditExists: !!previousAudit,
-      previousAuditSheetsKeys: previousAudit?.sheets ? Object.keys(previousAudit.sheets) : 'no sheets',
-      globalFiltersCount: globalFilters?.length || 0,
-      filtersWithComputerColumn: globalFilters?.filter(f => f.column === identifierColumn).map(f => ({ label: f.label, values: f.values?.length })) || []
-    });
     const result = runDeltaDetection(
       globalFilters,
       previousAudit,
