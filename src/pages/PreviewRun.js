@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { runAudit } from '../utils/auditEngine';
 import { exportToExcel } from '../utils/exportExcel';
-import { addToHistory, loadConfig, saveConfig } from '../config/configManager';
+import { addToHistory, loadConfig } from '../config/configManager';
 
 const STYLES = {
   page: { maxWidth: '900px' },
@@ -182,7 +182,6 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
     : [];
 
   // Check if previous audit date matches most recent history entry
-  // Reads fresh from localStorage to always compare against last completed audit
   function checkDeltaDateMatch() {
     if (!previousAudit || !previousAudit.auditDate) return true;
     const freshConfig = loadConfig();
@@ -225,7 +224,6 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
   const readyToRun = checks.every(c => c.ok);
 
   function handleRunClick() {
-    // If previous audit loaded → show confirmation first
     if (previousAudit) {
       const dateMatch = checkDeltaDateMatch();
       setDeltaDateMismatch(!dateMatch);
@@ -292,15 +290,9 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
         runDate
       });
 
-      // If delta ran and filters were updated → save updated config
-      if (withDelta && auditResults.updatedFilters) {
-        const updatedConfig = {
-          ...config,
-          filters: auditResults.updatedFilters
-        };
-        saveConfig(updatedConfig);
-        onConfigUpdate(updatedConfig);
-      }
+      // Auto-removal from Access Rules is no longer performed.
+      // Delta detection now flags assets in the Delta Flag Changes tab
+      // for manual review instead of mutating filter.values[].
 
       addToHistory({
         date: runDate,
@@ -310,6 +302,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
         totalClean: auditResults.summary.totalClean,
         totalBlacklisted: auditResults.summary.totalBlacklisted,
         totalProcessed: auditResults.summary.totalProcessed,
+        totalDelta: auditResults.summary.totalDelta || 0,
         byCategory: auditResults.summary.byCategory
       });
 
@@ -330,10 +323,8 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
     exportToExcel(results.assetName, results);
   }
 
-  // Count delta assets in under investigation
-  const deltaCount = results
-    ? (results.underInvestigation || []).filter(r => r['_Delta']).length
-    : 0;
+  // Delta count comes from engine output directly
+  const deltaCount = results ? (results.deltaAssets || []).length : 0;
 
   return (
     <div style={STYLES.page}>
@@ -352,8 +343,9 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
             </span>
           )}
           <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-            Delta detection will run automatically. Changed assets will be flagged
-            in Under Investigation and removed from their Access Rules lists.
+            Delta detection will run automatically. Tracked assets with changes
+            will appear in the Delta Flag Changes tab for manual review.
+            Access Rules will NOT be modified.
           </div>
         </div>
       )}
@@ -453,10 +445,11 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
                   Are you sure this is the correct previous audit file?
                 </div>
               )}
-              <strong>⚠ Delta detection will permanently remove assets from your Access Rules.</strong>
+              <strong>Delta detection will compare current data against the loaded previous audit.</strong>
               <br />
-              Changed or missing assets will be flagged in Under Investigation and removed from
-              their Access Rule lists. This cannot be undone within this session.
+              Tracked assets in your Access Rules will be checked for changes. Any
+              changed or missing assets will appear in the Delta Flag Changes tab
+              for your manual review. Access Rules will NOT be modified automatically.
               <br /><br />
               Do you want to proceed?
             </div>
@@ -488,9 +481,8 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
               fontSize: '13px', fontWeight: '500',
               backgroundColor: '#1c1108', border: '1px solid #92400e', color: '#fb923c'
             }}>
-              🔄 Delta detection: {deltaCount} asset{deltaCount !== 1 ? 's' : ''} changed
-              status and {deltaCount !== 1 ? 'were' : 'was'} removed from Access Rules.
-              See Under Investigation for details.
+              🔄 Delta detection: {deltaCount} tracked asset{deltaCount !== 1 ? 's' : ''} flagged
+              with changes. See the Delta Flag Changes tab in the export for review.
             </div>
           )}
 
@@ -500,7 +492,7 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
               fontSize: '13px', fontWeight: '500',
               backgroundColor: '#0f1f17', border: '1px solid #064e3b', color: '#34d399'
             }}>
-              🔄 Delta detection ran — no changes detected in Access Rules assets.
+              🔄 Delta detection ran — no changes detected in tracked assets.
             </div>
           )}
 
@@ -533,6 +525,14 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
                   {results.summary.totalUnderInvestigation}
                 </div>
                 <div style={STYLES.statLabel}>Under Investigation</div>
+              </div>
+            )}
+            {deltaCount > 0 && (
+              <div style={STYLES.statCard}>
+                <div style={{ ...STYLES.statNumber, color: '#fb923c' }}>
+                  {deltaCount}
+                </div>
+                <div style={STYLES.statLabel}>Delta Changes</div>
               </div>
             )}
             {Object.entries(results.summary.byCategory).map(([cat, count]) => (
@@ -599,6 +599,19 @@ export default function PreviewRun({ config, onConfigUpdate, dataSources, previo
                 </span>
               </div>
               <PreviewTable rows={results.underInvestigation} maxRows={3} />
+            </div>
+          )}
+
+          {/* Delta Flag Changes preview */}
+          {results.deltaAssets && results.deltaAssets.length > 0 && (
+            <div style={STYLES.categoryCard}>
+              <div style={STYLES.categoryHeader}>
+                <span style={{ ...STYLES.categoryName, color: '#fb923c' }}>🔄 Delta Flag Changes</span>
+                <span style={{ ...STYLES.categoryCount, backgroundColor: '#1c1108', borderColor: '#92400e', color: '#fb923c' }}>
+                  {results.deltaAssets.length} asset{results.deltaAssets.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <PreviewTable rows={results.deltaAssets} maxRows={3} />
             </div>
           )}
 

@@ -365,116 +365,133 @@ function evaluateRule(rule, row, allSources) {
 
 // =================================================================
 // DELTA DETECTION
-// Compares current Access Rules lists against previous audit data.
-// Only supports equals and is not operators.
-// Partial string operators (contains, starts with, etc.) are skipped.
-// Returns: { deltaAssets[], updatedFilters[] }
+// Compares assets listed in Access Rules against previous audit data.
+// Detects column-level changes between previous and current state.
+//
+// Scope:
+// - Runs only on Access Rules whose column === profile.identifierColumn
+// - Runs on all rule types (whitelist, blacklist, watchlist)
+// - Tracks each value (e.g. serial number) listed in the rule's values[]
+// - Compares all non-metadata columns (skips _ prefixed columns)
+// - Missing from current data → flagged as Missing
+// - Any column changed → flagged with old → new details
+// - Asset is NOT removed from Access Rule values[] (manual review)
+//
+// Returns: { deltaAssets[] }
 // =================================================================
 
-export function runDeltaDetection(globalFilters, previousAudit, processedRows) {
+export function runDeltaDetection(globalFilters, previousAudit, processedRows, identifierColumn) {
   if (!previousAudit || !previousAudit.sheets) {
-    return { deltaAssets: [], updatedFilters: globalFilters };
+    return { deltaAssets: [] };
+  }
+  if (!identifierColumn) {
+    console.warn('runDeltaDetection: no identifierColumn provided, skipping');
+    return { deltaAssets: [] };
   }
 
   const deltaAssets = [];
-  const updatedFilters = globalFilters.map(filter => ({ ...filter, values: [...filter.values] }));
 
-  globalFilters.forEach((filter, filterIdx) => {
-    const { column, values, label } = filter;
-    if (!column || !values || values.length === 0) return;
-
-    // Delta detection only supports exact match operators
-    const operator = filter.operator || 'equals';
-    if (!['equals', 'is not'].includes(operator)) return;
-
-    const valuesToRemove = [];
-
-    values.forEach(value => {
-      const valLower = value.toLowerCase().trim();
-
-      // Find matching rows in current processed data
-      const matchingCurrentRows = processedRows.filter(row => {
-        const rowVal = (row[column] || '').toString().toLowerCase().trim();
-        return operator === 'is not' ? rowVal !== valLower : rowVal === valLower;
-      });
-
-      // Find matching rows in previous audit
-      const matchingPreviousRows = [];
-      Object.entries(previousAudit.sheets).forEach(([tabName, rows]) => {
-        if (tabName === 'Summary' || tabName === '⚠ Unaccounted') return;
-        rows.forEach(row => {
-          const rowVal = (row[column] || '').toString().toLowerCase().trim();
-          const matches = operator === 'is not' ? rowVal !== valLower : rowVal === valLower;
-          if (matches) matchingPreviousRows.push({ row, tabName });
-        });
-      });
-
-      if (matchingCurrentRows.length === 0 && matchingPreviousRows.length === 0) {
-        // Never existed in either audit — skip
-        return;
+  // Build a flat map of all previous-audit rows keyed by identifier value.
+  // Skips Summary and Unaccounted tabs.
+  const previousByIdentifier = new Map();
+  Object.entries(previousAudit.sheets).forEach(([tabName, rows]) => {
+    if (tabName === 'Summary' || tabName === '⚠ Unaccounted') return;
+    rows.forEach(row => {
+      const key = (row[identifierColumn] || '').toString().toLowerCase().trim();
+      if (!key) return;
+      // First occurrence wins. If an asset appears in multiple tabs in the
+      // previous audit, this won't happen in practice for whitelist bypass
+      // (always Clean), but we handle defensively.
+      if (!previousByIdentifier.has(key)) {
+        previousByIdentifier.set(key, { row, tabName });
       }
+    });
+  });
 
-      if (matchingCurrentRows.length === 0 && matchingPreviousRows.length > 0) {
-        // Was in previous audit but gone from current data
+  // Build a flat map of current processed rows keyed by identifier value.
+  const currentByIdentifier = new Map();
+  processedRows.forEach(row => {
+    const key = (row[identifierColumn] || '').toString().toLowerCase().trim();
+    if (!key) return;
+    currentByIdentifier.set(key, row);
+  });
+
+  // For each Access Rule whose column targets the identifier column,
+  // walk its values[] and look for deltas.
+  globalFilters.forEach(filter => {
+    if (filter.column !== identifierColumn) return;
+    if (!filter.values || filter.values.length === 0) return;
+    if ((filter.operator || 'equals') !== 'equals') return;
+
+    filter.values.forEach(value => {
+      const key = value.toString().toLowerCase().trim();
+      if (!key) return;
+
+      const previousEntry = previousByIdentifier.get(key);
+      const currentRow = currentByIdentifier.get(key);
+
+      // Case 1: asset was in previous audit but not in current data
+      if (previousEntry && !currentRow) {
         deltaAssets.push({
-          [column]: value,
-          '_Audit Reason': `Delta: Asset no longer found in current data (was in "${label}" — ${matchingPreviousRows[0].tabName})`,
-          '_Delta': 'Missing',
-          '_Previous Tab': matchingPreviousRows[0].tabName,
-          '_Access Rule': label || filter.id
+          [identifierColumn]: value,
+          '_Audit Reason': `Asset listed in "${filter.label || filter.id}" is no longer present in current data`,
+          '_Delta Type': 'Missing',
+          '_Previous Tab': previousEntry.tabName,
+          '_Access Rule': filter.label || filter.id
         });
-        valuesToRemove.push(value);
         return;
       }
 
-      if (matchingPreviousRows.length === 0) {
-        // Not in previous audit — nothing to compare against, skip
-        return;
-      }
-
-      // Compare each matching current row against its previous counterpart
-      matchingCurrentRows.forEach(currentRow => {
-        const currentVal = (currentRow[column] || '').toString().toLowerCase().trim();
-        const previousEntry = matchingPreviousRows.find(p =>
-          (p.row[column] || '').toString().toLowerCase().trim() === currentVal
-        ) || matchingPreviousRows[0];
-
+      // Case 2: asset is in both audits — compare column-by-column
+      if (previousEntry && currentRow) {
         const previousRow = previousEntry.row;
         const changes = [];
 
+        // Walk every key on the current row that is not metadata.
         Object.keys(currentRow).forEach(col => {
           if (col.startsWith('_')) return;
-          const prevVal = (previousRow[col] || '').toString().trim();
-          const currVal = (currentRow[col] || '').toString().trim();
-          if (prevVal && currVal && prevVal !== currVal) {
-            changes.push(`${col} (${prevVal} → ${currVal})`);
+          const prevVal = (previousRow[col] !== undefined && previousRow[col] !== null)
+            ? previousRow[col].toString().trim()
+            : '';
+          const currVal = (currentRow[col] !== undefined && currentRow[col] !== null)
+            ? currentRow[col].toString().trim()
+            : '';
+          if (prevVal !== currVal) {
+            changes.push(`${col} (${prevVal || 'empty'} → ${currVal || 'empty'})`);
+          }
+        });
+
+        // Also walk previous-row keys in case columns existed before but are gone now
+        Object.keys(previousRow).forEach(col => {
+          if (col.startsWith('_')) return;
+          if (Object.prototype.hasOwnProperty.call(currentRow, col)) return;
+          const prevVal = (previousRow[col] !== undefined && previousRow[col] !== null)
+            ? previousRow[col].toString().trim()
+            : '';
+          if (prevVal) {
+            changes.push(`${col} (${prevVal} → removed)`);
           }
         });
 
         if (changes.length > 0) {
-          const reasonDetail = changes.join(', ');
           deltaAssets.push({
             ...currentRow,
-            '_Audit Reason': `Delta: ${reasonDetail}`,
-            '_Delta': 'Changed',
+            '_Audit Reason': `Tracked asset changed: ${changes.join(', ')}`,
+            '_Delta Type': 'Changed',
             '_Previous Tab': previousEntry.tabName,
-            '_Access Rule': label || filter.id
+            '_Access Rule': filter.label || filter.id
           });
-          if (!valuesToRemove.includes(value)) valuesToRemove.push(value);
         }
-      });
-    });
+        // No changes = no delta entry. Asset still appears in its normal output tab.
+        return;
+      }
 
-    // Remove flagged values from this filter's values[]
-    if (valuesToRemove.length > 0) {
-      updatedFilters[filterIdx] = {
-        ...updatedFilters[filterIdx],
-        values: filter.values.filter(v => !valuesToRemove.includes(v))
-      };
-    }
+      // Case 3: asset was not in previous audit (new addition to the list).
+      // No delta — nothing to compare against.
+    });
   });
 
-  return { deltaAssets, updatedFilters };
+  return { deltaAssets };
 }
 
 // =================================================================
@@ -648,18 +665,29 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
   };
 
   // STEP 5: Delta detection — runs if previous audit is loaded
-  let updatedFilters = globalFilters;
+  // Produces a separate deltaAssets bucket for the "Delta Flag Changes" output tab.
+  // Does NOT modify Access Rule values[] (manual review preferred over auto-removal).
+  let deltaAssets = [];
   if (previousAudit) {
-    const { deltaAssets, updatedFilters: newFilters } = runDeltaDetection(
+    const identifierColumn = assetTypeConfig.identifierColumn || 'Computer';
+    console.log('DELTA DEBUG:', {
+      assetTypeConfigKeys: Object.keys(assetTypeConfig || {}),
+      identifierColumnFromConfig: assetTypeConfig?.identifierColumn,
+      identifierColumnResolved: identifierColumn,
+      previousAuditExists: !!previousAudit,
+      previousAuditSheetsKeys: previousAudit?.sheets ? Object.keys(previousAudit.sheets) : 'no sheets',
+      globalFiltersCount: globalFilters?.length || 0,
+      filtersWithComputerColumn: globalFilters?.filter(f => f.column === identifierColumn).map(f => ({ label: f.label, values: f.values?.length })) || []
+    });
+    const result = runDeltaDetection(
       globalFilters,
       previousAudit,
-      processedRows
+      processedRows,
+      identifierColumn
     );
-    updatedFilters = newFilters;
-    deltaAssets.forEach(asset => underInvestigation.push(asset));
-    // Recalculate under investigation count
-    summary.totalUnderInvestigation = underInvestigation.length;
+    deltaAssets = result.deltaAssets;
+    summary.totalDelta = deltaAssets.length;
   }
 
-  return { byCategory, blacklisted, clean, underInvestigation, summary, categorySeverity, updatedFilters };
+  return { byCategory, blacklisted, clean, underInvestigation, deltaAssets, summary, categorySeverity, updatedFilters: globalFilters };
 }

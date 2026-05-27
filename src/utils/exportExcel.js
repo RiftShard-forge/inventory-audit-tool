@@ -62,6 +62,7 @@ function toSummarySheet(assetName, summary, timestamp) {
     [''],
     ['Suppressed', summary.totalBlacklisted],
     ['Under Investigation', summary.totalUnderInvestigation || 0],
+    ['Delta Flag Changes', summary.totalDelta || 0],
     ['Clean', summary.totalClean],
     [''],
     ['Total Processed', summary.totalProcessed],
@@ -125,6 +126,15 @@ export function exportToExcel(assetName, results) {
       wb,
       toWorksheet(results.underInvestigation),
       '🔍 Under Investigation'
+    );
+  }
+
+  // Delta Flag Changes tab — only added if delta detection found changes
+  if (results.deltaAssets && results.deltaAssets.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      toWorksheet(results.deltaAssets),
+      'Delta Flag Changes'
     );
   }
 
