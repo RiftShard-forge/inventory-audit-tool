@@ -947,7 +947,7 @@ function LibraryTab({ config, onConfigUpdate }) {
           <p style={STYLES.sectionDesc}>Click Restore to add an access rule back to the Access Rules tab.</p>
           {(library.filterHistory || []).map((filter, idx) => {
             const typeColors = { whitelist: '#34d399', blacklist: '#fca5a5', watchlist: '#fb923c' };
-            const typeLabels = { whitelist: 'Uncategorized Rule', blacklist: 'Suppression Rule', watchlist: 'Investigation Rule' };
+            const typeLabels = { whitelist: 'White List', blacklist: 'Suppression Rule', watchlist: 'Investigation Rule' };
             return (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#0f1117', border: '1px solid #2a2d3e', borderRadius: '6px', marginBottom: '8px' }}>
                 <div>
