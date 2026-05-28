@@ -255,7 +255,7 @@ export function addToRuleHistory(rule) {
   try {
     const library = loadLibrary();
     const filtered = library.ruleHistory.filter(r => r.name !== rule.name);
-    library.ruleHistory = [rule, ...filtered].slice(0, 20);
+    library.ruleHistory = [rule, ...filtered];
     return _saveLibrary(library);
   } catch (e) {
     console.error('Failed to save rule to library:', e);
@@ -267,7 +267,7 @@ export function addToCategoryHistory(category) {
   try {
     const library = loadLibrary();
     const filtered = library.categoryHistory.filter(c => c !== category);
-    library.categoryHistory = [category, ...filtered].slice(0, 50);
+    library.categoryHistory = [category, ...filtered];
     return _saveLibrary(library);
   } catch (e) {
     console.error('Failed to save category to library:', e);
@@ -279,7 +279,7 @@ export function addToStepHistory(step) {
   try {
     const library = loadLibrary();
     const filtered = library.stepHistory.filter(s => s.name !== step.name);
-    library.stepHistory = [step, ...filtered].slice(0, 20);
+    library.stepHistory = [step, ...filtered];
     return _saveLibrary(library);
   } catch (e) {
     console.error('Failed to save step to library:', e);
@@ -324,7 +324,7 @@ export function addToFilterHistory(filter) {
   try {
     const library = loadLibrary();
     const filtered = (library.filterHistory || []).filter(f => f.label !== filter.label);
-    library.filterHistory = [filter, ...filtered].slice(0, 20);
+    library.filterHistory = [filter, ...filtered];
     return _saveLibrary(library);
   } catch (e) {
     console.error('Failed to save filter to library:', e);
