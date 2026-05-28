@@ -380,7 +380,7 @@ function evaluateRule(rule, row, allSources) {
 // Returns: { deltaAssets[] }
 // =================================================================
 
-export function runDeltaDetection(globalFilters, previousAudit, processedRows, identifierColumn) {
+export function runDeltaDetection(globalFilters, previousAudit, processedRows, identifierColumn, sourceHeader) {
   if (!previousAudit || !previousAudit.sheets) {
     return { deltaAssets: [] };
   }
@@ -388,8 +388,17 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows, i
     console.warn('runDeltaDetection: no identifierColumn provided, skipping');
     return { deltaAssets: [] };
   }
+  if (!sourceHeader || sourceHeader.length === 0) {
+    console.warn('runDeltaDetection: no sourceHeader provided, skipping');
+    return { deltaAssets: [] };
+  }
 
   const deltaAssets = [];
+
+  // Columns we compare = source-original columns only.
+  // Engine-added columns and processing-step-added columns are excluded
+  // because they are not in the source's original header.
+  const columnsToCompare = sourceHeader;
 
   // Build a flat map of all previous-audit rows keyed by identifier value.
   // Skips Summary and Unaccounted tabs.
@@ -399,9 +408,6 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows, i
     rows.forEach(row => {
       const key = (row[identifierColumn] || '').toString().toLowerCase().trim();
       if (!key) return;
-      // First occurrence wins. If an asset appears in multiple tabs in the
-      // previous audit, this won't happen in practice for whitelist bypass
-      // (always Clean), but we handle defensively.
       if (!previousByIdentifier.has(key)) {
         previousByIdentifier.set(key, { row, tabName });
       }
@@ -442,14 +448,12 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows, i
         return;
       }
 
-      // Case 2: asset is in both audits — compare column-by-column
+      // Case 2: asset is in both audits — compare source-original columns only.
       if (previousEntry && currentRow) {
         const previousRow = previousEntry.row;
         const changes = [];
 
-        // Walk every key on the current row that is not metadata.
-        Object.keys(currentRow).forEach(col => {
-          if (col.startsWith('_')) return;
+        columnsToCompare.forEach(col => {
           const prevVal = (previousRow[col] !== undefined && previousRow[col] !== null)
             ? previousRow[col].toString().trim()
             : '';
@@ -458,18 +462,6 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows, i
             : '';
           if (prevVal !== currVal) {
             changes.push(`${col} (${prevVal || 'empty'} → ${currVal || 'empty'})`);
-          }
-        });
-
-        // Also walk previous-row keys in case columns existed before but are gone now
-        Object.keys(previousRow).forEach(col => {
-          if (col.startsWith('_')) return;
-          if (Object.prototype.hasOwnProperty.call(currentRow, col)) return;
-          const prevVal = (previousRow[col] !== undefined && previousRow[col] !== null)
-            ? previousRow[col].toString().trim()
-            : '';
-          if (prevVal) {
-            changes.push(`${col} (${prevVal} → removed)`);
           }
         });
 
@@ -482,7 +474,6 @@ export function runDeltaDetection(globalFilters, previousAudit, processedRows, i
             '_Access Rule': filter.label || filter.id
           });
         }
-        // No changes = no delta entry. Asset still appears in its normal output tab.
         return;
       }
 
@@ -667,6 +658,8 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
   // STEP 5: Delta detection — runs if previous audit is loaded
   // Produces a separate deltaAssets bucket for the "Delta Flag Changes" output tab.
   // Does NOT modify Access Rule values[] (manual review preferred over auto-removal).
+  // Compares only source-original columns (Option B) — excludes engine-added
+  // and processing-step-added columns automatically.
   let deltaAssets = [];
   if (previousAudit) {
     const identifierColumn = assetTypeConfig.identifierColumn || 'Computer';
@@ -674,7 +667,8 @@ export function runAudit(primarySource, allSources, assetTypeConfig, auditRules,
       globalFilters,
       previousAudit,
       processedRows,
-      identifierColumn
+      identifierColumn,
+      primarySource.headers || []
     );
     deltaAssets = result.deltaAssets;
     summary.totalDelta = deltaAssets.length;
